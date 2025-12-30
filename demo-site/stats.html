@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Zookeeper - Your Stats</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-forest: #1a3a1a;
+      --color-forest-light: #2d5a27;
+      --color-canopy: #4a7c43;
+      --color-savanna: #c4a35a;
+      --color-sand: #e8dcc4;
+      --color-cream: #faf6ed;
+      --color-bark: #5c4033;
+      --color-terracotta: #c45d3a;
+      
+      --font-display: 'Fredoka', sans-serif;
+      --font-body: 'Nunito', sans-serif;
+      
+      --shadow-soft: 0 4px 20px rgba(26, 58, 26, 0.08);
+      --shadow-card: 0 8px 32px rgba(26, 58, 26, 0.12);
+      
+      --radius-sm: 12px;
+      --radius-md: 20px;
+      --radius-lg: 28px;
+      --radius-full: 9999px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--color-cream);
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+
+    .header {
+      background: linear-gradient(135deg, var(--color-forest) 0%, var(--color-forest-light) 100%);
+      padding: 20px 20px 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -30%;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .header-title {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 700;
+      color: white;
+    }
+
+    .share-button {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-full);
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .user-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: var(--radius-full);
+      background: linear-gradient(135deg, var(--color-savanna), var(--color-terracotta));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 700;
+      border: 3px solid rgba(255,255,255,0.3);
+    }
+
+    .user-details { color: white; }
+    .user-name { font-family: var(--font-display); font-size: 20px; font-weight: 600; margin-bottom: 2px; }
+    .user-since { font-size: 14px; opacity: 0.8; }
+
+    .main-stats {
+      background: white;
+      margin: -50px 16px 20px;
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow-card);
+      position: relative;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+
+    .main-stat { text-align: center; animation: countUp 0.5s ease-out backwards; }
+    .main-stat:nth-child(1) { animation-delay: 0.1s; }
+    .main-stat:nth-child(2) { animation-delay: 0.2s; }
+    .main-stat:nth-child(3) { animation-delay: 0.3s; }
+    .main-stat:nth-child(4) { animation-delay: 0.4s; }
+
+    @keyframes countUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .main-stat-icon { font-size: 24px; margin-bottom: 8px; }
+    .main-stat-value { font-family: var(--font-display); font-size: 42px; font-weight: 700; color: var(--color-forest); line-height: 1; margin-bottom: 4px; }
+    .main-stat-label { font-size: 14px; color: var(--color-bark); font-weight: 500; }
+
+    .main { padding: 0 16px 100px; }
+
+    .section { margin-bottom: 28px; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding: 0 4px; }
+    .section-title { font-family: var(--font-display); font-size: 20px; font-weight: 600; color: var(--color-forest); }
+    .section-link { font-size: 14px; color: var(--color-canopy); text-decoration: none; font-weight: 600; }
+
+    .streak-card {
+      background: linear-gradient(135deg, var(--color-terracotta) 0%, #d4714f 100%);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      color: white;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 8px 24px rgba(196, 93, 58, 0.3);
+    }
+
+    .streak-icon { font-size: 48px; }
+    .streak-content { flex: 1; }
+    .streak-value { font-family: var(--font-display); font-size: 36px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+    .streak-label { font-size: 14px; opacity: 0.9; }
+    .streak-detail { font-size: 12px; opacity: 0.7; margin-top: 4px; }
+
+    .category-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .category-card {
+      background: white;
+      border-radius: var(--radius-md);
+      padding: 16px 12px;
+      text-align: center;
+      box-shadow: var(--shadow-soft);
+      transition: transform 0.2s;
+    }
+    .category-card:hover { transform: translateY(-4px); }
+    .category-icon { font-size: 28px; margin-bottom: 8px; }
+    .category-count { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--color-forest); margin-bottom: 2px; }
+    .category-name { font-size: 11px; color: var(--color-bark); font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+
+    .zoo-list { display: flex; flex-direction: column; gap: 12px; }
+    .zoo-card {
+      background: white;
+      border-radius: var(--radius-md);
+      padding: 16px;
+      box-shadow: var(--shadow-soft);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .zoo-rank {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-sm);
+      background: var(--color-sand);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--color-bark);
+      flex-shrink: 0;
+    }
+    .zoo-card:first-child .zoo-rank { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: white; }
+    .zoo-details { flex: 1; min-width: 0; }
+    .zoo-name { font-weight: 600; color: var(--color-forest); margin-bottom: 4px; }
+    .zoo-meta { font-size: 13px; color: var(--color-bark); }
+    .zoo-progress { text-align: right; }
+    .zoo-percent { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--color-canopy); }
+    .zoo-count { font-size: 12px; color: var(--color-bark); }
+
+    .achievements-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .achievement {
+      background: white;
+      border-radius: var(--radius-md);
+      padding: 14px 8px;
+      text-align: center;
+      box-shadow: var(--shadow-soft);
+      transition: all 0.2s;
+    }
+    .achievement:hover { transform: scale(1.05); }
+    .achievement.locked { opacity: 0.4; filter: grayscale(1); }
+    .achievement-icon { font-size: 32px; margin-bottom: 6px; }
+    .achievement-name { font-size: 10px; color: var(--color-bark); font-weight: 600; line-height: 1.2; }
+
+    .photos-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .photo-thumb {
+      aspect-ratio: 1;
+      border-radius: var(--radius-sm);
+      background: var(--color-sand);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+    }
+    .photo-more {
+      background: var(--color-forest);
+      color: white;
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      padding: 12px 20px 28px;
+      display: flex;
+      justify-content: space-around;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+      border-radius: 24px 24px 0 0;
+      z-index: 100;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      text-decoration: none;
+      color: var(--color-bark);
+      padding: 4px 16px;
+    }
+    .nav-item.active { color: var(--color-forest); }
+    .nav-icon { font-size: 24px; }
+    .nav-label { font-size: 11px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-top">
+      <h1 class="header-title">Your Safari Stats</h1>
+      <button class="share-button">📤</button>
+    </div>
+    <div class="user-info">
+      <div class="user-avatar">S</div>
+      <div class="user-details">
+        <div class="user-name">Sarah Mitchell</div>
+        <div class="user-since">Wildlife explorer since Dec 2024</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="main-stats">
+    <div class="main-stat">
+      <div class="main-stat-icon">🏛️</div>
+      <div class="main-stat-value">5</div>
+      <div class="main-stat-label">Zoos Visited</div>
+    </div>
+    <div class="main-stat">
+      <div class="main-stat-icon">🦒</div>
+      <div class="main-stat-value">127</div>
+      <div class="main-stat-label">Animals Spotted</div>
+    </div>
+    <div class="main-stat">
+      <div class="main-stat-icon">📸</div>
+      <div class="main-stat-value">43</div>
+      <div class="main-stat-label">Photos Taken</div>
+    </div>
+    <div class="main-stat">
+      <div class="main-stat-icon">⭐</div>
+      <div class="main-stat-value">12</div>
+      <div class="main-stat-label">Rare Species</div>
+    </div>
+  </div>
+
+  <main class="main">
+    <section class="section">
+      <div class="streak-card">
+        <div class="streak-icon">🔥</div>
+        <div class="streak-content">
+          <div class="streak-value">3 Zoos</div>
+          <div class="streak-label">This Month!</div>
+          <div class="streak-detail">Your best month yet</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">By Category</h2>
+      </div>
+      <div class="category-grid">
+        <div class="category-card">
+          <div class="category-icon">🦁</div>
+          <div class="category-count">52</div>
+          <div class="category-name">Mammals</div>
+        </div>
+        <div class="category-card">
+          <div class="category-icon">🦅</div>
+          <div class="category-count">38</div>
+          <div class="category-name">Birds</div>
+        </div>
+        <div class="category-card">
+          <div class="category-icon">🐊</div>
+          <div class="category-count">19</div>
+          <div class="category-name">Reptiles</div>
+        </div>
+        <div class="category-card">
+          <div class="category-icon">🐸</div>
+          <div class="category-count">8</div>
+          <div class="category-name">Amphibians</div>
+        </div>
+        <div class="category-card">
+          <div class="category-icon">🐠</div>
+          <div class="category-count">6</div>
+          <div class="category-name">Fish</div>
+        </div>
+        <div class="category-card">
+          <div class="category-icon">🦋</div>
+          <div class="category-count">4</div>
+          <div class="category-name">Inverts</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">Your Zoos</h2>
+        <a href="#" class="section-link">See all →</a>
+      </div>
+      <div class="zoo-list">
+        <article class="zoo-card">
+          <div class="zoo-rank">1</div>
+          <div class="zoo-details">
+            <div class="zoo-name">Chester Zoo</div>
+            <div class="zoo-meta">3 visits · Last: Today</div>
+          </div>
+          <div class="zoo-progress">
+            <div class="zoo-percent">62%</div>
+            <div class="zoo-count">29/47</div>
+          </div>
+        </article>
+        <article class="zoo-card">
+          <div class="zoo-rank">2</div>
+          <div class="zoo-details">
+            <div class="zoo-name">London Zoo</div>
+            <div class="zoo-meta">2 visits · Last: 2 weeks ago</div>
+          </div>
+          <div class="zoo-progress">
+            <div class="zoo-percent">45%</div>
+            <div class="zoo-count">31/69</div>
+          </div>
+        </article>
+        <article class="zoo-card">
+          <div class="zoo-rank">3</div>
+          <div class="zoo-details">
+            <div class="zoo-name">Edinburgh Zoo</div>
+            <div class="zoo-meta">1 visit · Last: 1 month ago</div>
+          </div>
+          <div class="zoo-progress">
+            <div class="zoo-percent">38%</div>
+            <div class="zoo-count">22/58</div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">Achievements</h2>
+        <a href="#" class="section-link">4/12 →</a>
+      </div>
+      <div class="achievements-grid">
+        <div class="achievement">
+          <div class="achievement-icon">🥇</div>
+          <div class="achievement-name">First Visit</div>
+        </div>
+        <div class="achievement">
+          <div class="achievement-icon">📷</div>
+          <div class="achievement-name">Shutterbug</div>
+        </div>
+        <div class="achievement">
+          <div class="achievement-icon">🦁</div>
+          <div class="achievement-name">Big Cat Fan</div>
+        </div>
+        <div class="achievement">
+          <div class="achievement-icon">🌍</div>
+          <div class="achievement-name">5 Zoos</div>
+        </div>
+        <div class="achievement locked">
+          <div class="achievement-icon">🏆</div>
+          <div class="achievement-name">Completionist</div>
+        </div>
+        <div class="achievement locked">
+          <div class="achievement-icon">🦋</div>
+          <div class="achievement-name">Bug Hunter</div>
+        </div>
+        <div class="achievement locked">
+          <div class="achievement-icon">🌙</div>
+          <div class="achievement-name">Night Owl</div>
+        </div>
+        <div class="achievement locked">
+          <div class="achievement-icon">💯</div>
+          <div class="achievement-name">Century</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">Recent Photos</h2>
+        <a href="#" class="section-link">See all →</a>
+      </div>
+      <div class="photos-grid">
+        <div class="photo-thumb">🐘</div>
+        <div class="photo-thumb">🦁</div>
+        <div class="photo-thumb">🐧</div>
+        <div class="photo-thumb">🦒</div>
+        <div class="photo-thumb">🐼</div>
+        <div class="photo-thumb">🦩</div>
+        <div class="photo-thumb">🐊</div>
+        <div class="photo-thumb photo-more">+36</div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav">
+    <a href="home.html" class="nav-item">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Home</span>
+    </a>
+    <a href="checklist.html" class="nav-item">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">Visits</span>
+    </a>
+    <a href="#" class="nav-item active">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Stats</span>
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Settings</span>
+    </a>
+  </nav>
+</body>
+</html>

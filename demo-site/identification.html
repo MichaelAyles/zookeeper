@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Zookeeper - Animal Identified!</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-forest: #1a3a1a;
+      --color-forest-light: #2d5a27;
+      --color-canopy: #4a7c43;
+      --color-savanna: #c4a35a;
+      --color-sand: #e8dcc4;
+      --color-cream: #faf6ed;
+      --color-bark: #5c4033;
+      --color-terracotta: #c45d3a;
+      --color-success: #22c55e;
+      
+      --font-display: 'Fredoka', sans-serif;
+      --font-body: 'Nunito', sans-serif;
+      
+      --shadow-soft: 0 4px 20px rgba(26, 58, 26, 0.1);
+      --shadow-card: 0 8px 32px rgba(26, 58, 26, 0.15);
+      
+      --radius-sm: 12px;
+      --radius-md: 20px;
+      --radius-lg: 28px;
+      --radius-full: 9999px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: #0a0a0a;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      color: white;
+      overflow: hidden;
+    }
+
+    /* Photo background */
+    .photo-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 0;
+    }
+
+    .photo-bg img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: brightness(0.4);
+    }
+
+    /* Success overlay */
+    .success-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(ellipse at center, rgba(34, 197, 94, 0.2) 0%, transparent 70%);
+      z-index: 1;
+      pointer-events: none;
+      animation: successPulse 2s ease-out;
+    }
+
+    @keyframes successPulse {
+      0% { opacity: 0; transform: scale(0.8); }
+      30% { opacity: 1; transform: scale(1.2); }
+      100% { opacity: 0.3; transform: scale(1); }
+    }
+
+    /* Header */
+    .header {
+      position: relative;
+      z-index: 10;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .close-button {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-full);
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .close-button:hover {
+      background: rgba(255,255,255,0.25);
+      transform: scale(1.05);
+    }
+
+    .retake-button {
+      padding: 10px 18px;
+      border-radius: var(--radius-full);
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      border: none;
+      color: white;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .retake-button:hover {
+      background: rgba(255,255,255,0.25);
+    }
+
+    /* Main content */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      position: relative;
+      z-index: 10;
+      padding: 20px;
+    }
+
+    /* Success badge */
+    .success-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--color-success);
+      color: white;
+      padding: 10px 18px;
+      border-radius: var(--radius-full);
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+      animation: badgePop 0.5s ease-out 0.3s both;
+      align-self: flex-start;
+    }
+
+    @keyframes badgePop {
+      0% { opacity: 0; transform: scale(0.5) translateY(20px); }
+      70% { transform: scale(1.1) translateY(0); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .success-badge::before {
+      content: '✓';
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      background: rgba(255,255,255,0.3);
+      border-radius: 50%;
+      font-size: 12px;
+    }
+
+    /* Result card */
+    .result-card {
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(20px);
+      border-radius: var(--radius-lg);
+      padding: 28px 24px;
+      color: var(--color-forest);
+      box-shadow: var(--shadow-card);
+      animation: slideUp 0.6s ease-out 0.2s both;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Animal header */
+    .animal-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .animal-emoji {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, var(--color-sand), var(--color-savanna));
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      flex-shrink: 0;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .animal-details {
+      flex: 1;
+    }
+
+    .animal-name {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--color-forest);
+      line-height: 1.1;
+      margin-bottom: 4px;
+    }
+
+    .animal-scientific {
+      font-size: 15px;
+      color: var(--color-bark);
+      font-style: italic;
+      margin-bottom: 8px;
+    }
+
+    .confidence-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(34, 197, 94, 0.15);
+      color: #16a34a;
+      padding: 6px 12px;
+      border-radius: var(--radius-full);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .confidence-badge::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: currentColor;
+      border-radius: 50%;
+    }
+
+    /* Fun fact */
+    .fun-fact {
+      background: linear-gradient(135deg, rgba(74, 124, 67, 0.1) 0%, rgba(196, 163, 90, 0.1) 100%);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 24px;
+      display: flex;
+      gap: 12px;
+    }
+
+    .fun-fact-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .fun-fact-content {
+      flex: 1;
+    }
+
+    .fun-fact-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--color-canopy);
+      margin-bottom: 4px;
+    }
+
+    .fun-fact-text {
+      font-size: 14px;
+      color: var(--color-forest);
+      line-height: 1.5;
+    }
+
+    /* Action buttons */
+    .actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .action-button {
+      flex: 1;
+      padding: 16px 20px;
+      border-radius: var(--radius-md);
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .action-button.primary {
+      background: var(--color-forest);
+      color: white;
+      border: none;
+      box-shadow: 0 4px 12px rgba(26, 58, 26, 0.3);
+    }
+
+    .action-button.primary:hover {
+      background: var(--color-forest-light);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(26, 58, 26, 0.35);
+    }
+
+    .action-button.secondary {
+      background: transparent;
+      color: var(--color-forest);
+      border: 2px solid var(--color-sand);
+    }
+
+    .action-button.secondary:hover {
+      border-color: var(--color-canopy);
+      background: rgba(74, 124, 67, 0.05);
+    }
+
+    /* Confetti animation */
+    .confetti {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      z-index: 100;
+      overflow: hidden;
+    }
+
+    .confetti-piece {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      top: -20px;
+      animation: confettiFall 3s ease-out forwards;
+    }
+
+    @keyframes confettiFall {
+      0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(100vh) rotate(720deg);
+        opacity: 0;
+      }
+    }
+
+    .confetti-piece:nth-child(1) { left: 10%; animation-delay: 0s; background: var(--color-terracotta); }
+    .confetti-piece:nth-child(2) { left: 20%; animation-delay: 0.1s; background: var(--color-savanna); border-radius: 50%; }
+    .confetti-piece:nth-child(3) { left: 30%; animation-delay: 0.2s; background: var(--color-canopy); }
+    .confetti-piece:nth-child(4) { left: 40%; animation-delay: 0.15s; background: var(--color-terracotta); border-radius: 50%; }
+    .confetti-piece:nth-child(5) { left: 50%; animation-delay: 0.25s; background: var(--color-savanna); }
+    .confetti-piece:nth-child(6) { left: 60%; animation-delay: 0.1s; background: var(--color-canopy); border-radius: 50%; }
+    .confetti-piece:nth-child(7) { left: 70%; animation-delay: 0.3s; background: var(--color-terracotta); }
+    .confetti-piece:nth-child(8) { left: 80%; animation-delay: 0.2s; background: var(--color-savanna); border-radius: 50%; }
+    .confetti-piece:nth-child(9) { left: 90%; animation-delay: 0.05s; background: var(--color-canopy); }
+    .confetti-piece:nth-child(10) { left: 15%; animation-delay: 0.35s; background: var(--color-terracotta); border-radius: 50%; }
+    .confetti-piece:nth-child(11) { left: 25%; animation-delay: 0.4s; background: var(--color-savanna); }
+    .confetti-piece:nth-child(12) { left: 75%; animation-delay: 0.45s; background: var(--color-canopy); border-radius: 50%; }
+
+    /* Category tag */
+    .category-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-bark);
+      margin-top: 4px;
+    }
+
+    .category-tag::before {
+      content: '🦁';
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Photo background (placeholder - would be actual captured photo) -->
+  <div class="photo-bg">
+    <img src="https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?w=800&q=80" alt="Captured elephant photo">
+  </div>
+
+  <!-- Success overlay effect -->
+  <div class="success-overlay"></div>
+
+  <!-- Confetti -->
+  <div class="confetti">
+    <div class="confetti-piece"></div>
+    <div class="confetti-piece"></div>
+    <div class="confetti-piece"></div>
+    <div class="confetti-piece"></div>
+    <div class="confetti-piece"></div>
+    <div class="confetti-piece"></div>
+    <div class="confetti-piece"></div>
+    <div class="confetti-piece"></div>
+    <div class="confetti-piece"></div>
+    <div class="confetti-piece"></div>
+    <div class="confetti-piece"></div>
+    <div class="confetti-piece"></div>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <button class="close-button">×</button>
+    <button class="retake-button">
+      <span>🔄</span>
+      <span>Retake</span>
+    </button>
+  </header>
+
+  <!-- Main content -->
+  <main class="main">
+    <!-- Success badge -->
+    <div class="success-badge">Animal Identified!</div>
+
+    <!-- Result card -->
+    <div class="result-card">
+      <div class="animal-header">
+        <div class="animal-emoji">🐘</div>
+        <div class="animal-details">
+          <h1 class="animal-name">African Elephant</h1>
+          <p class="animal-scientific">Loxodonta africana</p>
+          <div class="category-tag">Mammals</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <div class="confidence-badge">97% match</div>
+      </div>
+
+      <div class="fun-fact">
+        <span class="fun-fact-icon">💡</span>
+        <div class="fun-fact-content">
+          <div class="fun-fact-label">Did you know?</div>
+          <p class="fun-fact-text">African elephants are the largest land animals on Earth. They can communicate using sounds too low for humans to hear!</p>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="action-button secondary">
+          <span>✏️</span>
+          <span>Wrong?</span>
+        </button>
+        <button class="action-button primary">
+          <span>✓</span>
+          <span>Add to Collection</span>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Simple interaction demo
+    document.querySelector('.action-button.primary').addEventListener('click', () => {
+      alert('Added to your collection! 🎉');
+    });
+
+    document.querySelector('.action-button.secondary').addEventListener('click', () => {
+      alert('Select the correct animal from the list');
+    });
+  </script>
+</body>
+</html>

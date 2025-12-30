@@ -1,0 +1,153 @@
+/* Custom fonts - must be first */
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+/* Design tokens as CSS variables */
+:root {
+  /* Core colors */
+  --color-forest: #1a3a1a;
+  --color-forest-light: #2d5a27;
+  --color-canopy: #4a7c43;
+  --color-savanna: #c4a35a;
+  --color-sand: #e8dcc4;
+  --color-cream: #faf6ed;
+  --color-bark: #5c4033;
+  --color-terracotta: #c45d3a;
+  --color-sky: #87ceeb;
+
+  /* Semantic colors */
+  --color-success: #22c55e;
+  --color-error: #ef4444;
+
+  /* Category colors */
+  --color-mammals: #8b5a2b;
+  --color-birds: #4a90d9;
+  --color-reptiles: #2d8659;
+  --color-amphibians: #7c3aed;
+  --color-fish: #0891b2;
+  --color-invertebrates: #ea580c;
+
+  /* Typography */
+  --font-display: 'Fredoka', sans-serif;
+  --font-body: 'Nunito', sans-serif;
+
+  /* Shadows */
+  --shadow-soft: 0 4px 20px rgba(26, 58, 26, 0.08);
+  --shadow-card: 0 8px 32px rgba(26, 58, 26, 0.12);
+  --shadow-button: 0 4px 12px rgba(26, 58, 26, 0.2);
+
+  /* Radii */
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+  --radius-full: 9999px;
+}
+
+/* Tailwind theme extension */
+@theme {
+  /* Colors */
+  --color-forest: #1a3a1a;
+  --color-forest-light: #2d5a27;
+  --color-canopy: #4a7c43;
+  --color-savanna: #c4a35a;
+  --color-sand: #e8dcc4;
+  --color-cream: #faf6ed;
+  --color-bark: #5c4033;
+  --color-terracotta: #c45d3a;
+  --color-sky: #87ceeb;
+  --color-success: #22c55e;
+  --color-error: #ef4444;
+  --color-mammals: #8b5a2b;
+  --color-birds: #4a90d9;
+  --color-reptiles: #2d8659;
+  --color-amphibians: #7c3aed;
+  --color-fish: #0891b2;
+  --color-invertebrates: #ea580c;
+
+  /* Font families */
+  --font-display: 'Fredoka', sans-serif;
+  --font-body: 'Nunito', sans-serif;
+
+  /* Border radius */
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+}
+
+/* Base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-body);
+  background: var(--color-cream);
+  color: var(--color-forest);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Disable pull-to-refresh on mobile */
+body {
+  overscroll-behavior-y: contain;
+}
+
+/* Hide scrollbar but keep functionality */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Animation utilities */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-pulse-soft {
+  animation: pulse 2s infinite;
+}
+
+.animate-bounce-soft {
+  animation: bounce 0.4s ease;
+}

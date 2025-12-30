@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Zookeeper - Checklist</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-forest: #1a3a1a;
+      --color-forest-light: #2d5a27;
+      --color-canopy: #4a7c43;
+      --color-savanna: #c4a35a;
+      --color-sand: #e8dcc4;
+      --color-cream: #faf6ed;
+      --color-bark: #5c4033;
+      --color-terracotta: #c45d3a;
+      
+      /* Category colors */
+      --color-mammals: #8b5a2b;
+      --color-birds: #4a90d9;
+      --color-reptiles: #2d8659;
+      --color-amphibians: #7c3aed;
+      --color-fish: #0891b2;
+      --color-invertebrates: #ea580c;
+      
+      --font-display: 'Fredoka', sans-serif;
+      --font-body: 'Nunito', sans-serif;
+      
+      --shadow-soft: 0 2px 12px rgba(26, 58, 26, 0.08);
+      --shadow-card: 0 4px 20px rgba(26, 58, 26, 0.1);
+      
+      --radius-sm: 12px;
+      --radius-md: 16px;
+      --radius-lg: 24px;
+      --radius-full: 9999px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--color-cream);
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    .header {
+      position: sticky;
+      top: 0;
+      background: var(--color-cream);
+      padding: 16px 20px 12px;
+      z-index: 50;
+      border-bottom: 1px solid rgba(26, 58, 26, 0.08);
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .back-button {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: none;
+      border: none;
+      font-family: var(--font-body);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--color-forest);
+      cursor: pointer;
+      padding: 8px 12px 8px 8px;
+      margin: -8px;
+      border-radius: var(--radius-sm);
+      transition: background 0.2s;
+    }
+
+    .back-button:hover {
+      background: rgba(26, 58, 26, 0.05);
+    }
+
+    .back-icon {
+      font-size: 20px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .icon-button {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-full);
+      background: white;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: var(--shadow-soft);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .icon-button:hover {
+      transform: scale(1.05);
+      box-shadow: var(--shadow-card);
+    }
+
+    /* Zoo info */
+    .zoo-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .zoo-name {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--color-forest);
+    }
+
+    .progress-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--color-forest);
+      color: white;
+      padding: 8px 14px;
+      border-radius: var(--radius-full);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .progress-badge-bar {
+      width: 40px;
+      height: 6px;
+      background: rgba(255,255,255,0.3);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+
+    .progress-badge-fill {
+      height: 100%;
+      width: 26%;
+      background: var(--color-savanna);
+      border-radius: var(--radius-full);
+    }
+
+    /* Filter tabs */
+    .filter-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 12px 20px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .filter-tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .filter-tab {
+      padding: 8px 16px;
+      border-radius: var(--radius-full);
+      border: 2px solid transparent;
+      background: white;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-bark);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .filter-tab:hover {
+      border-color: var(--color-canopy);
+    }
+
+    .filter-tab.active {
+      background: var(--color-forest);
+      color: white;
+      border-color: var(--color-forest);
+    }
+
+    .filter-tab .count {
+      display: inline-block;
+      background: rgba(0,0,0,0.1);
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      margin-left: 6px;
+      font-size: 12px;
+    }
+
+    .filter-tab.active .count {
+      background: rgba(255,255,255,0.2);
+    }
+
+    /* Main content */
+    .main {
+      flex: 1;
+      padding: 8px 20px 140px;
+    }
+
+    /* Category section */
+    .category {
+      margin-bottom: 24px;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .category:nth-child(1) { animation-delay: 0s; }
+    .category:nth-child(2) { animation-delay: 0.05s; }
+    .category:nth-child(3) { animation-delay: 0.1s; }
+    .category:nth-child(4) { animation-delay: 0.15s; }
+
+    .category-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding: 0 4px;
+    }
+
+    .category-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .category-icon.mammals { background: rgba(139, 90, 43, 0.15); }
+    .category-icon.birds { background: rgba(74, 144, 217, 0.15); }
+    .category-icon.reptiles { background: rgba(45, 134, 89, 0.15); }
+    .category-icon.invertebrates { background: rgba(234, 88, 12, 0.15); }
+
+    .category-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--color-forest);
+    }
+
+    .category-count {
+      margin-left: auto;
+      font-size: 14px;
+      color: var(--color-bark);
+      font-weight: 600;
+    }
+
+    .category-count span {
+      color: var(--color-canopy);
+    }
+
+    /* Animal list */
+    .animal-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* Animal card */
+    .animal-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: white;
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      box-shadow: var(--shadow-soft);
+      transition: all 0.2s;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .animal-card:hover {
+      box-shadow: var(--shadow-card);
+      transform: translateX(4px);
+    }
+
+    .animal-card.seen {
+      background: linear-gradient(135deg, rgba(74, 124, 67, 0.08) 0%, rgba(196, 163, 90, 0.08) 100%);
+    }
+
+    .animal-card.seen::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--color-canopy);
+    }
+
+    /* Checkbox */
+    .checkbox {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      border: 2px solid var(--color-sand);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s;
+      background: white;
+    }
+
+    .animal-card.seen .checkbox {
+      background: var(--color-canopy);
+      border-color: var(--color-canopy);
+    }
+
+    .checkbox-icon {
+      color: white;
+      font-size: 16px;
+      opacity: 0;
+      transform: scale(0.5);
+      transition: all 0.2s;
+    }
+
+    .animal-card.seen .checkbox-icon {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    /* Animal info */
+    .animal-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .animal-name {
+      font-weight: 600;
+      color: var(--color-forest);
+      margin-bottom: 2px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .animal-name .photo-badge {
+      font-size: 12px;
+    }
+
+    .animal-scientific {
+      font-size: 13px;
+      color: var(--color-bark);
+      font-style: italic;
+    }
+
+    /* Camera button */
+    .camera-button {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-sm);
+      background: var(--color-sand);
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .camera-button:hover {
+      background: var(--color-savanna);
+      transform: scale(1.05);
+    }
+
+    .animal-card.seen .camera-button {
+      background: rgba(74, 124, 67, 0.15);
+    }
+
+    /* Floating action button */
+    .fab-container {
+      position: fixed;
+      bottom: 100px;
+      left: 20px;
+      right: 20px;
+      z-index: 40;
+    }
+
+    .fab {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: linear-gradient(135deg, var(--color-terracotta) 0%, #d4714f 100%);
+      color: white;
+      border: none;
+      border-radius: var(--radius-lg);
+      padding: 18px 28px;
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      box-shadow: 0 8px 32px rgba(196, 93, 58, 0.4);
+      transition: all 0.3s;
+    }
+
+    .fab:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(196, 93, 58, 0.5);
+    }
+
+    .fab:active {
+      transform: translateY(0);
+    }
+
+    .fab-icon {
+      font-size: 24px;
+      animation: pulse-camera 2s infinite;
+    }
+
+    @keyframes pulse-camera {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    /* Bottom navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      padding: 12px 20px 28px;
+      display: flex;
+      justify-content: space-around;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+      border-radius: 24px 24px 0 0;
+      z-index: 100;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      text-decoration: none;
+      color: var(--color-bark);
+      transition: color 0.2s;
+      padding: 4px 16px;
+    }
+
+    .nav-item.active {
+      color: var(--color-forest);
+    }
+
+    .nav-icon {
+      font-size: 24px;
+    }
+
+    .nav-label {
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* Fun fact tooltip - shown on tap in real app */
+    .fun-fact {
+      display: none;
+      background: var(--color-forest);
+      color: white;
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      margin-top: 10px;
+      position: relative;
+    }
+
+    .fun-fact::before {
+      content: '💡';
+      margin-right: 8px;
+    }
+
+    /* Empty state - for filtered views */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--color-bark);
+    }
+
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    .empty-state-title {
+      font-family: var(--font-display);
+      font-size: 20px;
+      color: var(--color-forest);
+      margin-bottom: 8px;
+    }
+
+    .empty-state-text {
+      font-size: 14px;
+      max-width: 240px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-top">
+      <button class="back-button">
+        <span class="back-icon">←</span>
+        <span>Back</span>
+      </button>
+      <div class="header-actions">
+        <button class="icon-button">🔍</button>
+        <button class="icon-button">⋮</button>
+      </div>
+    </div>
+    <div class="zoo-info">
+      <h1 class="zoo-name">Chester Zoo</h1>
+      <div class="progress-badge">
+        <span>12/47</span>
+        <div class="progress-badge-bar">
+          <div class="progress-badge-fill"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Filter tabs -->
+  <div class="filter-tabs">
+    <button class="filter-tab active">All<span class="count">47</span></button>
+    <button class="filter-tab">Seen<span class="count">12</span></button>
+    <button class="filter-tab">Remaining<span class="count">35</span></button>
+    <button class="filter-tab">📸 Photos<span class="count">8</span></button>
+  </div>
+
+  <!-- Main content -->
+  <main class="main">
+    <!-- Mammals -->
+    <section class="category">
+      <div class="category-header">
+        <div class="category-icon mammals">🦁</div>
+        <h2 class="category-title">Mammals</h2>
+        <span class="category-count"><span>8</span> / 23</span>
+      </div>
+      <div class="animal-list">
+        <article class="animal-card seen">
+          <div class="checkbox">
+            <span class="checkbox-icon">✓</span>
+          </div>
+          <div class="animal-info">
+            <div class="animal-name">African Elephant <span class="photo-badge">📷</span></div>
+            <div class="animal-scientific">Loxodonta africana</div>
+          </div>
+          <button class="camera-button">📷</button>
+        </article>
+        
+        <article class="animal-card seen">
+          <div class="checkbox">
+            <span class="checkbox-icon">✓</span>
+          </div>
+          <div class="animal-info">
+            <div class="animal-name">Red Panda <span class="photo-badge">📷</span></div>
+            <div class="animal-scientific">Ailurus fulgens</div>
+          </div>
+          <button class="camera-button">📷</button>
+        </article>
+        
+        <article class="animal-card seen">
+          <div class="checkbox">
+            <span class="checkbox-icon">✓</span>
+          </div>
+          <div class="animal-info">
+            <div class="animal-name">Asiatic Lion</div>
+            <div class="animal-scientific">Panthera leo persica</div>
+          </div>
+          <button class="camera-button">📷</button>
+        </article>
+        
+        <article class="animal-card">
+          <div class="checkbox">
+            <span class="checkbox-icon">✓</span>
+          </div>
+          <div class="animal-info">
+            <div class="animal-name">Sumatran Tiger</div>
+            <div class="animal-scientific">Panthera tigris sumatrae</div>
+          </div>
+          <button class="camera-button">📷</button>
+        </article>
+        
+        <article class="animal-card">
+          <div class="checkbox">
+            <span class="checkbox-icon">✓</span>
+          </div>
+          <div class="animal-info">
+            <div class="animal-name">Rothschild's Giraffe</div>
+            <div class="animal-scientific">Giraffa camelopardalis rothschildi</div>
+          </div>
+          <button class="camera-button">📷</button>
+        </article>
+        
+        <article class="animal-card">
+          <div class="checkbox">
+            <span class="checkbox-icon">✓</span>
+          </div>
+          <div class="animal-info">
+            <div class="animal-name">Western Lowland Gorilla</div>
+            <div class="animal-scientific">Gorilla gorilla gorilla</div>
+          </div>
+          <button class="camera-button">📷</button>
+        </article>
+      </div>
+    </section>
+
+    <!-- Birds -->
+    <section class="category">
+      <div class="category-header">
+        <div class="category-icon birds">🦅</div>
+        <h2 class="category-title">Birds</h2>
+        <span class="category-count"><span>3</span> / 15</span>
+      </div>
+      <div class="animal-list">
+        <article class="animal-card seen">
+          <div class="checkbox">
+            <span class="checkbox-icon">✓</span>
+          </div>
+          <div class="animal-info">
+            <div class="animal-name">Greater Flamingo <span class="photo-badge">📷</span></div>
+            <div class="animal-scientific">Phoenicopterus roseus</div>
+          </div>
+          <button class="camera-button">📷</button>
+        </article>
+        
+        <article class="animal-card seen">
+          <div class="checkbox">
+            <span class="checkbox-icon">✓</span>
+          </div>
+          <div class="animal-info">
+            <div class="animal-name">Humboldt Penguin <span class="photo-badge">📷</span></div>
+            <div class="animal-scientific">Spheniscus humboldti</div>
+          </div>
+          <button class="camera-button">📷</button>
+        </article>
+        
+        <article class="animal-card">
+          <div class="checkbox">
+            <span class="checkbox-icon">✓</span>
+          </div>
+          <div class="animal-info">
+            <div class="animal-name">Andean Condor</div>
+            <div class="animal-scientific">Vultur gryphus</div>
+          </div>
+          <button class="camera-button">📷</button>
+        </article>
+        
+        <article class="animal-card">
+          <div class="checkbox">
+            <span class="checkbox-icon">✓</span>
+          </div>
+          <div class="animal-info">
+            <div class="animal-name">Scarlet Macaw</div>
+            <div class="animal-scientific">Ara macao</div>
+          </div>
+          <button class="camera-button">📷</button>
+        </article>
+      </div>
+    </section>
+
+    <!-- Reptiles -->
+    <section class="category">
+      <div class="category-header">
+        <div class="category-icon reptiles">🐊</div>
+        <h2 class="category-title">Reptiles</h2>
+        <span class="category-count"><span>1</span> / 6</span>
+      </div>
+      <div class="animal-list">
+        <article class="animal-card seen">
+          <div class="checkbox">
+            <span class="checkbox-icon">✓</span>
+          </div>
+          <div class="animal-info">
+            <div class="animal-name">Komodo Dragon <span class="photo-badge">📷</span></div>
+            <div class="animal-scientific">Varanus komodoensis</div>
+          </div>
+          <button class="camera-button">📷</button>
+        </article>
+        
+        <article class="animal-card">
+          <div class="checkbox">
+            <span class="checkbox-icon">✓</span>
+          </div>
+          <div class="animal-info">
+            <div class="animal-name">Galápagos Giant Tortoise</div>
+            <div class="animal-scientific">Chelonoidis nigra</div>
+          </div>
+          <button class="camera-button">📷</button>
+        </article>
+        
+        <article class="animal-card">
+          <div class="checkbox">
+            <span class="checkbox-icon">✓</span>
+          </div>
+          <div class="animal-info">
+            <div class="animal-name">Philippine Crocodile</div>
+            <div class="animal-scientific">Crocodylus mindorensis</div>
+          </div>
+          <button class="camera-button">📷</button>
+        </article>
+      </div>
+    </section>
+
+    <!-- Invertebrates -->
+    <section class="category">
+      <div class="category-header">
+        <div class="category-icon invertebrates">🦋</div>
+        <h2 class="category-title">Invertebrates</h2>
+        <span class="category-count"><span>0</span> / 3</span>
+      </div>
+      <div class="animal-list">
+        <article class="animal-card">
+          <div class="checkbox">
+            <span class="checkbox-icon">✓</span>
+          </div>
+          <div class="animal-info">
+            <div class="animal-name">Blue Morpho Butterfly</div>
+            <div class="animal-scientific">Morpho menelaus</div>
+          </div>
+          <button class="camera-button">📷</button>
+        </article>
+        
+        <article class="animal-card">
+          <div class="checkbox">
+            <span class="checkbox-icon">✓</span>
+          </div>
+          <div class="animal-info">
+            <div class="animal-name">Giant African Land Snail</div>
+            <div class="animal-scientific">Lissachatina fulica</div>
+          </div>
+          <button class="camera-button">📷</button>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <!-- Floating action button -->
+  <div class="fab-container">
+    <button class="fab">
+      <span class="fab-icon">📸</span>
+      <span>Identify Animal</span>
+    </button>
+  </div>
+
+  <!-- Bottom navigation -->
+  <nav class="bottom-nav">
+    <a href="home.html" class="nav-item">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Home</span>
+    </a>
+    <a href="#" class="nav-item active">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">Visits</span>
+    </a>
+    <a href="stats.html" class="nav-item">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Stats</span>
+    </a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Settings</span>
+    </a>
+  </nav>
+
+  <script>
+    // Simple interactivity for demo
+    document.querySelectorAll('.animal-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.camera-button')) return;
+        card.classList.toggle('seen');
+        
+        // Update counts (simplified)
+        updateCounts();
+      });
+    });
+
+    document.querySelectorAll('.filter-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+      });
+    });
+
+    function updateCounts() {
+      const total = document.querySelectorAll('.animal-card').length;
+      const seen = document.querySelectorAll('.animal-card.seen').length;
+      const percent = Math.round((seen / total) * 100);
+      
+      document.querySelector('.progress-badge span').textContent = `${seen}/${total}`;
+      document.querySelector('.progress-badge-fill').style.width = `${percent}%`;
+    }
+  </script>
+</body>
+</html>
