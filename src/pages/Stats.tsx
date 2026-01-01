@@ -9,7 +9,7 @@ export default function Stats() {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
   const [recentSightings, setRecentSightings] = useState<Array<{
-    sighting: { id: string; seenAt: Date };
+    sighting: { id: string; seenAt: string };
     animal: { commonName: string; category: AnimalCategory };
     zooName: string;
   }>>([]);
@@ -182,7 +182,7 @@ export default function Stats() {
                 fontSize: '12px',
                 color: colors.textLight,
               }}>
-                {formatRelativeTime(item.sighting.seenAt)}
+                {formatRelativeTime(new Date(item.sighting.seenAt))}
               </p>
             </div>
           ))}

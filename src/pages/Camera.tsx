@@ -117,7 +117,7 @@ export default function Camera() {
       setResult({
         animal: matchedAnimal,
         confidence: Math.round(identification.confidence * 100),
-        funFact: identification.funFact || matchedAnimal.funFact,
+        funFact: identification.funFact ?? matchedAnimal.funFact ?? undefined,
         isFirstSighting: !alreadySpotted,
       });
       setCameraState('result');

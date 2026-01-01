@@ -1,21 +1,25 @@
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../stores/useStore';
+import { api } from '../lib/api';
 import { colors } from '../lib/colors';
 import BottomNav from '../components/BottomNav';
 
 export default function Settings() {
-  const profile = useStore((state) => state.profile);
-  const setProfile = useStore((state) => state.setProfile);
-  const setActiveVisit = useStore((state) => state.setActiveVisit);
+  const user = useStore((state) => state.user);
+  const logout = useStore((state) => state.logout);
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    setProfile(null);
-    setActiveVisit(null, null);
+  const handleLogout = async () => {
+    try {
+      await api.post('/api/auth/logout');
+    } catch {
+      // Continue with logout even if API fails
+    }
+    logout();
     navigate('/');
   };
 
-  const firstInitial = profile?.displayName?.charAt(0).toUpperCase() || 'U';
+  const firstInitial = user?.displayName?.charAt(0).toUpperCase() || 'U';
 
   return (
     <div style={{
@@ -46,32 +50,45 @@ export default function Settings() {
           alignItems: 'center',
           gap: '16px',
         }}>
-          <div style={{
-            width: '64px',
-            height: '64px',
-            borderRadius: '50%',
-            background: `linear-gradient(135deg, ${colors.gold} 0%, ${colors.terracotta} 100%)`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '28px',
-            fontWeight: '700',
-            color: '#fff',
-          }}>
-            {firstInitial}
-          </div>
+          {user?.avatarUrl ? (
+            <img
+              src={user.avatarUrl}
+              alt={user.displayName}
+              style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+              }}
+            />
+          ) : (
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: `linear-gradient(135deg, ${colors.gold} 0%, ${colors.terracotta} 100%)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '28px',
+              fontWeight: '700',
+              color: '#fff',
+            }}>
+              {firstInitial}
+            </div>
+          )}
           <div>
             <p style={{
               margin: 0,
               fontSize: '20px',
               fontWeight: '700',
               color: colors.text,
-            }}>{profile?.displayName}</p>
+            }}>{user?.displayName}</p>
             <p style={{
               margin: '4px 0 0',
               fontSize: '14px',
               color: colors.textMuted,
-            }}>Explorer</p>
+            }}>{user?.email}</p>
           </div>
         </div>
       </div>
@@ -158,7 +175,7 @@ export default function Settings() {
                 margin: '2px 0 0',
                 fontSize: '12px',
                 color: colors.textMuted,
-              }}>Version 1.0.0</p>
+              }}>Version 2.0.0</p>
             </div>
           </div>
           <p style={{
@@ -167,7 +184,7 @@ export default function Settings() {
             color: colors.textMuted,
             lineHeight: '1.5',
           }}>
-            Track your wildlife adventures and collect sightings at zoos around the world.
+            Track your wildlife adventures and collect sightings at zoos around the world. Your data syncs across all your devices.
           </p>
         </div>
       </div>
@@ -192,7 +209,7 @@ export default function Settings() {
             gap: '8px',
           }}
         >
-          🚪 Log Out
+          🚪 Sign Out
         </button>
       </div>
 

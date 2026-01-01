@@ -1,43 +1,33 @@
-import { db, generateId } from '../lib/db';
+import { api } from '../lib/api';
 import type { Sighting, ChecklistItem, ZooAnimal } from '../types';
 
 // ============================================
-// Sightings Service - Swap-ready for Supabase
+// Sightings Service - Cloudflare D1 via API
 // ============================================
 
 export async function getSightingsByVisit(visitId: string): Promise<Sighting[]> {
-  return db.sightings.where('visitId').equals(visitId).toArray();
-}
-
-export async function getSightingById(id: string): Promise<Sighting | undefined> {
-  return db.sightings.get(id);
+  return api.get<Sighting[]>(`/api/sightings?visitId=${visitId}`);
 }
 
 export async function getAllSightings(): Promise<Sighting[]> {
-  return db.sightings.orderBy('seenAt').reverse().toArray();
+  return api.get<Sighting[]>('/api/sightings');
 }
 
 export async function createSighting(sighting: Omit<Sighting, 'id'>): Promise<Sighting> {
-  const newSighting: Sighting = {
-    ...sighting,
-    id: generateId(),
-  };
-  await db.sightings.add(newSighting);
-  return newSighting;
+  return api.post<Sighting>('/api/sightings', sighting);
 }
 
 export async function deleteSighting(id: string): Promise<void> {
-  await db.sightings.delete(id);
+  await api.delete(`/api/sightings?id=${id}`);
 }
 
 export async function toggleSighting(
   visitId: string,
   animalId: string
 ): Promise<{ added: boolean; sighting?: Sighting }> {
-  // Check if sighting exists
-  const existing = await db.sightings
-    .filter(s => s.visitId === visitId && s.animalId === animalId)
-    .first();
+  // Check existing sightings
+  const sightings = await getSightingsByVisit(visitId);
+  const existing = sightings.find((s) => s.animalId === animalId);
 
   if (existing) {
     await deleteSighting(existing.id);
@@ -47,7 +37,7 @@ export async function toggleSighting(
   const sighting = await createSighting({
     visitId,
     animalId,
-    seenAt: new Date(),
+    seenAt: new Date().toISOString(),
     aiIdentified: false,
   });
 
@@ -59,30 +49,15 @@ export async function addAISighting(
   visitId: string,
   animalId: string,
   confidence: number,
-  photoBase64?: string
+  photoUrl?: string
 ): Promise<Sighting> {
-  // Check if already sighted
-  const existing = await db.sightings
-    .filter(s => s.visitId === visitId && s.animalId === animalId)
-    .first();
-
-  if (existing) {
-    // Update with AI info
-    await db.sightings.update(existing.id, {
-      aiIdentified: true,
-      aiConfidence: confidence,
-      photoBase64,
-    });
-    return { ...existing, aiIdentified: true, aiConfidence: confidence, photoBase64 };
-  }
-
-  return createSighting({
+  // API handles upsert - will update existing or create new
+  return api.post<Sighting>('/api/sightings', {
     visitId,
     animalId,
-    seenAt: new Date(),
     aiIdentified: true,
     aiConfidence: confidence,
-    photoBase64,
+    photoUrl,
   });
 }
 
@@ -92,23 +67,11 @@ export async function buildChecklist(
   visitId: string
 ): Promise<ChecklistItem[]> {
   const sightings = await getSightingsByVisit(visitId);
-  const sightingMap = new Map(sightings.map(s => [s.animalId, s]));
+  const sightingMap = new Map(sightings.map((s) => [s.animalId, s]));
 
-  return animals.map(animal => ({
+  return animals.map((animal) => ({
     ...animal,
     seen: sightingMap.has(animal.id),
     sighting: sightingMap.get(animal.id),
   }));
-}
-
-// Get unique animals spotted (across all visits)
-export async function getUniqueAnimalsSeen(): Promise<Set<string>> {
-  const sightings = await getAllSightings();
-  return new Set(sightings.map(s => s.animalId));
-}
-
-// Get total photo count
-export async function getPhotoCount(): Promise<number> {
-  const sightings = await getAllSightings();
-  return sightings.filter(s => s.photoBase64 || s.photoUrl).length;
 }

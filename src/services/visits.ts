@@ -1,70 +1,37 @@
-import { db, generateId } from '../lib/db';
+import { api } from '../lib/api';
 import type { Visit } from '../types';
 
 // ============================================
-// Visits Service - Swap-ready for Supabase
+// Visits Service - Cloudflare D1 via API
 // ============================================
 
 export async function getVisits(): Promise<Visit[]> {
-  return db.visits.orderBy('startedAt').reverse().toArray();
+  return api.get<Visit[]>('/api/visits');
 }
 
 export async function getVisitById(id: string): Promise<Visit | undefined> {
-  return db.visits.get(id);
+  try {
+    return await api.get<Visit>(`/api/visits/${id}`);
+  } catch {
+    return undefined;
+  }
 }
 
-export async function getVisitsByZoo(zooId: string): Promise<Visit[]> {
-  return db.visits.where('zooId').equals(zooId).toArray();
-}
-
-export async function getActiveVisit(): Promise<Visit | undefined> {
-  // Find the most recent visit without an endedAt
-  const visits = await db.visits
-    .filter(v => !v.endedAt)
-    .reverse()
-    .sortBy('startedAt');
-  return visits[0];
+export async function getActiveVisit(): Promise<Visit | null> {
+  return api.get<Visit | null>('/api/visits/active');
 }
 
 export async function startVisit(zooId: string): Promise<Visit> {
-  // End any active visits first
-  const activeVisit = await getActiveVisit();
-  if (activeVisit) {
-    await endVisit(activeVisit.id);
-  }
-
-  const visit: Visit = {
-    id: generateId(),
-    zooId,
-    startedAt: new Date(),
-  };
-  await db.visits.add(visit);
-  return visit;
+  return api.post<Visit>('/api/visits', { zooId });
 }
 
 export async function endVisit(id: string): Promise<void> {
-  await db.visits.update(id, { endedAt: new Date() });
+  await api.patch(`/api/visits/${id}`, { endedAt: new Date().toISOString() });
 }
 
 export async function updateVisitNotes(id: string, notes: string): Promise<void> {
-  await db.visits.update(id, { notes });
+  await api.patch(`/api/visits/${id}`, { notes });
 }
 
-export async function deleteVisit(id: string): Promise<void> {
-  // Also delete associated sightings
-  await db.sightings.where('visitId').equals(id).delete();
-  await db.visits.delete(id);
-}
-
-// Get visit count per zoo
-export async function getVisitCountByZoo(): Promise<Map<string, number>> {
-  const visits = await db.visits.toArray();
-  const counts = new Map<string, number>();
-
-  for (const visit of visits) {
-    const current = counts.get(visit.zooId) || 0;
-    counts.set(visit.zooId, current + 1);
-  }
-
-  return counts;
-}
+// Note: deleteVisit not exposed via API for safety
+// Visits are user data and deletion would be handled differently

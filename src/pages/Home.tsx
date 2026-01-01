@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../stores/useStore';
+import { api } from '../lib/api';
 import { getActiveVisit } from '../services/visits';
 import { getZooById } from '../services/zoos';
 import { getSightingsByVisit } from '../services/sightings';
@@ -12,8 +13,8 @@ import type { UserStats, Visit, Zoo, AnimalCategory } from '../types';
 import BottomNav from '../components/BottomNav';
 
 export default function Home() {
-  const profile = useStore((state) => state.profile);
-  const setProfile = useStore((state) => state.setProfile);
+  const user = useStore((state) => state.user);
+  const logout = useStore((state) => state.logout);
   const setActiveVisit = useStore((state) => state.setActiveVisit);
   const navigate = useNavigate();
 
@@ -23,46 +24,54 @@ export default function Home() {
   const [progress, setProgress] = useState({ seen: 0, total: 0 });
   const [showMenu, setShowMenu] = useState(false);
   const [recentSightings, setRecentSightings] = useState<Array<{
-    sighting: { id: string; seenAt: Date };
+    sighting: { id: string; seenAt: string };
     animal: { commonName: string; category: AnimalCategory };
     zooName: string;
   }>>([]);
 
   useEffect(() => {
     async function loadData() {
-      const userStats = await getUserStats();
-      setStats(userStats);
+      try {
+        const userStats = await getUserStats();
+        setStats(userStats);
 
-      const visit = await getActiveVisit();
-      if (visit) {
-        const zoo = await getZooById(visit.zooId);
-        setActiveVisitState(visit);
-        setActiveZoo(zoo || null);
-        setActiveVisit(visit, zoo || null);
+        const visit = await getActiveVisit();
+        if (visit) {
+          const zoo = await getZooById(visit.zooId);
+          setActiveVisitState(visit);
+          setActiveZoo(zoo || null);
+          setActiveVisit(visit, zoo || null);
 
-        const sightings = await getSightingsByVisit(visit.id);
-        const animals = await getAnimalsByZoo(visit.zooId);
-        setProgress({ seen: sightings.length, total: animals.length });
+          const sightings = await getSightingsByVisit(visit.id);
+          const animals = await getAnimalsByZoo(visit.zooId);
+          setProgress({ seen: sightings.length, total: animals.length });
+        }
+
+        const recent = await getRecentSightings(5);
+        setRecentSightings(recent);
+      } catch (err) {
+        console.error('Failed to load home data:', err);
       }
-
-      const recent = await getRecentSightings(5);
-      setRecentSightings(recent);
     }
     loadData();
   }, [setActiveVisit]);
 
-  const handleLogout = () => {
-    setProfile(null);
-    setActiveVisit(null, null);
+  const handleLogout = async () => {
+    try {
+      await api.post('/api/auth/logout');
+    } catch {
+      // Continue with logout even if API fails
+    }
+    logout();
     navigate('/');
   };
 
-  const isRecent = (date: Date) => {
+  const isRecent = (dateStr: string) => {
     const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    return new Date(date) > hourAgo;
+    return new Date(dateStr) > hourAgo;
   };
 
-  const firstInitial = profile?.displayName?.charAt(0).toUpperCase() || 'U';
+  const firstInitial = user?.displayName?.charAt(0).toUpperCase() || 'U';
   const progressPercent = percentage(progress.seen, progress.total);
   const isFirstTime = !stats || stats.totalZoosVisited === 0;
 
@@ -83,29 +92,50 @@ export default function Home() {
           <div>
             <p style={{ margin: 0, fontSize: '14px', color: colors.textMuted }}>{getGreeting()}</p>
             <h1 style={{ margin: '4px 0 0', fontSize: '26px', fontWeight: '700', color: colors.text }}>
-              {profile?.displayName} 👋
+              {user?.displayName} 👋
             </h1>
           </div>
           <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              style={{
-                width: '44px',
-                height: '44px',
-                borderRadius: '50%',
-                background: `linear-gradient(135deg, ${colors.gold} 0%, ${colors.terracotta} 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                fontWeight: '700',
-                color: '#fff',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              {firstInitial}
-            </button>
+            {user?.avatarUrl ? (
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '50%',
+                  padding: 0,
+                  border: 'none',
+                  cursor: 'pointer',
+                  overflow: 'hidden',
+                }}
+              >
+                <img
+                  src={user.avatarUrl}
+                  alt={user.displayName}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '50%',
+                  background: `linear-gradient(135deg, ${colors.gold} 0%, ${colors.terracotta} 100%)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  fontWeight: '700',
+                  color: '#fff',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                {firstInitial}
+              </button>
+            )}
             {showMenu && (
               <>
                 <div
@@ -124,8 +154,8 @@ export default function Home() {
                   zIndex: 50,
                 }}>
                   <div style={{ padding: '12px 16px', borderBottom: `1px solid ${colors.sand}` }}>
-                    <p style={{ margin: 0, fontWeight: '600', color: colors.text }}>{profile?.displayName}</p>
-                    <p style={{ margin: '2px 0 0', fontSize: '12px', color: colors.textMuted }}>Explorer</p>
+                    <p style={{ margin: 0, fontWeight: '600', color: colors.text }}>{user?.displayName}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: '12px', color: colors.textMuted }}>{user?.email}</p>
                   </div>
                   <button
                     onClick={handleLogout}
@@ -141,7 +171,7 @@ export default function Home() {
                       cursor: 'pointer',
                     }}
                   >
-                    🚪 Log out
+                    🚪 Sign out
                   </button>
                 </div>
               </>
@@ -389,7 +419,7 @@ export default function Home() {
                   margin: '3px 0 0',
                   fontSize: '13px',
                   color: colors.textMuted,
-                }}>{formatRelativeTime(item.sighting.seenAt)}</p>
+                }}>{formatRelativeTime(new Date(item.sighting.seenAt))}</p>
               </div>
               {isRecent(item.sighting.seenAt) && (
                 <div style={{

@@ -5,25 +5,26 @@
 export interface Zoo {
   id: string;
   name: string;
-  city?: string;
+  city?: string | null;
   country: string;
-  latitude?: number;
-  longitude?: number;
-  websiteUrl?: string;
-  animalsGeneratedAt?: Date;
-  createdAt: Date;
+  latitude?: number | null;
+  longitude?: number | null;
+  websiteUrl?: string | null;
+  animalsGeneratedAt?: string | null;
+  createdAt: string;
+  isVisited?: boolean; // Added by API
 }
 
 export interface ZooAnimal {
   id: string;
   zooId: string;
   commonName: string;
-  scientificName?: string;
+  scientificName?: string | null;
   category: AnimalCategory;
-  exhibitArea?: string;
-  funFact?: string;
-  imageUrl?: string;
-  createdAt: Date;
+  exhibitArea?: string | null;
+  funFact?: string | null;
+  imageUrl?: string | null;
+  createdAt: string;
 }
 
 export type AnimalCategory =
@@ -37,21 +38,20 @@ export type AnimalCategory =
 export interface Visit {
   id: string;
   zooId: string;
-  startedAt: Date;
-  endedAt?: Date;
-  notes?: string;
+  startedAt: string;
+  endedAt?: string | null;
+  notes?: string | null;
 }
 
 export interface Sighting {
   id: string;
   visitId: string;
   animalId: string;
-  seenAt: Date;
-  photoUrl?: string;
-  photoBase64?: string;
+  seenAt: string;
+  photoUrl?: string | null;
   aiIdentified: boolean;
-  aiConfidence?: number;
-  notes?: string;
+  aiConfidence?: number | null;
+  notes?: string | null;
 }
 
 // ============================================
@@ -74,6 +74,22 @@ export interface UserStats {
   totalAnimalsSpotted: number;
   totalPhotos: number;
   totalVisits: number;
+  categoryBreakdown?: { category: string; count: number }[];
+  recentSightings?: {
+    id: string;
+    seenAt: string;
+    photoUrl: string | null;
+    animalName: string;
+    category: string;
+    zooName: string;
+  }[];
+  zooStats?: {
+    id: string;
+    name: string;
+    visitCount: number;
+    animalsSpotted: number;
+    lastVisit: string;
+  }[];
 }
 
 export interface CategoryStats {
@@ -101,11 +117,20 @@ export interface IdentificationResult {
 }
 
 // ============================================
-// Store Types
+// Auth Types
 // ============================================
 
+export interface User {
+  id: string;
+  email: string;
+  displayName: string;
+  avatarUrl?: string | null;
+  createdAt: string;
+}
+
+// Legacy type - now aliases to User
 export interface UserProfile {
   id: string;
   displayName: string;
-  createdAt: Date;
+  createdAt: string;
 }
