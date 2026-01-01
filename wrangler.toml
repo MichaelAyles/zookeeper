@@ -4,13 +4,13 @@ pages_build_output_dir = "dist"
 
 [vars]
 GOOGLE_CLIENT_ID = ""
-GOOGLE_REDIRECT_URI = "https://zookeeper.pages.dev/api/auth/callback"
+GOOGLE_REDIRECT_URI = "https://zookeeperapp.com/api/auth/callback"
 
 # D1 Database - create with: wrangler d1 create zookeeper-db
 [[d1_databases]]
 binding = "DB"
 database_name = "zookeeper-db"
-database_id = ""  # Fill in after running: wrangler d1 create zookeeper-db
+database_id = "14fb6426-089b-4630-b615-2f3b9e2bbb28"
 
 # R2 Bucket - create with: wrangler r2 bucket create zookeeper-photos
 [[r2_buckets]]
