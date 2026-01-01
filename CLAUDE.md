@@ -54,3 +54,26 @@ src/
 ### Environment Variables
 Copy `.env.example` to `.env.local` and add:
 - `VITE_OPENROUTER_API_KEY` - Required for AI features
+
+## Screenshots with Playwright
+
+Use the Playwright MCP tools to capture screenshots of the app:
+
+```bash
+# Navigate to a page
+mcp__plugin_playwright_playwright__browser_navigate url="http://localhost:5173"
+
+# Take a screenshot
+mcp__plugin_playwright_playwright__browser_take_screenshot filename="my-screenshot.png"
+```
+
+Screenshots are saved to `.playwright-mcp/` (gitignored). Move important screenshots to `blogs/` with sequential numbering.
+
+## Blog Documentation
+
+After completing a major feature, create a blog entry in `blogs/`:
+
+1. Check existing files in `blogs/` to find the next available number
+2. Name files sequentially: `0001blog.md`, `0002screenshot.png`, `0003screenshot.png`, etc.
+3. All blog content and screenshots share the same numbering sequence
+4. Blog posts should document what was built, design decisions, and technical notes

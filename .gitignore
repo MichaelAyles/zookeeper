@@ -68,3 +68,6 @@ workbox-*.js
 # Misc
 *.pem
 .cache/
+
+# Playwright
+.playwright-mcp/
