@@ -1,133 +1,208 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { searchZoos, seedZoos, getZoos } from '../services/zoos';
-import { startVisit } from '../services/visits';
-import { getOrGenerateAnimals } from '../services/animals';
 import { useStore } from '../stores/useStore';
+import { searchZoos, getZoos } from '../services/zoos';
+import { startVisit } from '../services/visits';
+import { colors } from '../lib/colors';
 import type { Zoo } from '../types';
 
 export default function ZooSelect() {
-  const [query, setQuery] = useState('');
-  const [zoos, setZoos] = useState<Zoo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState<string | null>(null);
   const navigate = useNavigate();
   const setActiveVisit = useStore((state) => state.setActiveVisit);
 
+  const [search, setSearch] = useState('');
+  const [zoos, setZoos] = useState<Zoo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
+
   useEffect(() => {
-    init();
+    loadZoos();
   }, []);
 
-  useEffect(() => {
-    if (query) {
-      searchZoos(query).then(setZoos);
-    } else {
-      getZoos().then(setZoos);
-    }
-  }, [query]);
-
-  async function init() {
-    await seedZoos();
+  async function loadZoos() {
+    setLoading(true);
     const allZoos = await getZoos();
     setZoos(allZoos);
     setLoading(false);
   }
 
-  async function handleSelectZoo(zoo: Zoo) {
-    setGenerating(zoo.id);
-    try {
-      // Generate animals if needed
-      await getOrGenerateAnimals(zoo);
-
-      // Start visit
-      const visit = await startVisit(zoo.id);
-      setActiveVisit(visit, zoo);
-
-      navigate(`/visit/${visit.id}`);
-    } catch (error) {
-      console.error('Failed to start visit:', error);
-      alert('Failed to load zoo animals. Please check your API key and try again.');
-    } finally {
-      setGenerating(null);
+  async function handleSearch() {
+    if (!search.trim()) {
+      loadZoos();
+      return;
     }
+
+    setSearching(true);
+    const results = await searchZoos(search.trim());
+    setZoos(results);
+    setSearching(false);
+  }
+
+  async function handleSelectZoo(zoo: Zoo) {
+    // Start a visit
+    const visit = await startVisit(zoo.id);
+    setActiveVisit(visit, zoo);
+    navigate(`/visit/${visit.id}`);
   }
 
   return (
-    <div className="min-h-screen bg-cream">
+    <div style={{
+      minHeight: '100vh',
+      background: colors.cream,
+      padding: '24px 20px',
+    }}>
+      {/* Status bar spacer */}
+      <div style={{ height: '24px' }} />
+
       {/* Header */}
-      <header className="sticky top-0 bg-cream z-10 px-5 pt-4 pb-3 border-b border-forest/5">
+      <div style={{ marginBottom: '24px' }}>
         <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-forest font-semibold mb-3
-                     hover:bg-forest/5 -ml-2 px-2 py-1 rounded-[12px] transition-colors"
+          onClick={() => navigate('/')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 0',
+            background: 'transparent',
+            border: 'none',
+            color: colors.forest,
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            marginBottom: '16px',
+          }}
         >
-          <span className="text-xl">←</span>
-          <span>Back</span>
+          ← Back
         </button>
-        <h1 className="font-display text-2xl font-bold text-forest">Select a Zoo</h1>
-      </header>
+        <h1 style={{ margin: '0 0 4px', fontSize: '26px', fontWeight: '700', color: colors.text }}>
+          Find a Zoo
+        </h1>
+        <p style={{ margin: 0, fontSize: '14px', color: colors.textMuted }}>
+          Search for a zoo to start your visit
+        </p>
+      </div>
 
       {/* Search */}
-      <div className="px-5 py-4">
-        <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">🔍</span>
+      <div style={{ marginBottom: '24px' }}>
+        <div style={{
+          display: 'flex',
+          gap: '10px',
+        }}>
           <input
             type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder="Search zoos..."
-            className="w-full pl-12 pr-4 py-3.5 rounded-[16px] bg-white border-2 border-sand
-                       font-body text-forest placeholder:text-bark/50
-                       focus:border-canopy focus:outline-none transition-colors
-                       shadow-[var(--shadow-soft)]"
+            style={{
+              flex: 1,
+              padding: '14px 18px',
+              fontSize: '16px',
+              border: `2px solid ${colors.sand}`,
+              borderRadius: '14px',
+              outline: 'none',
+              color: colors.text,
+              background: '#fff',
+            }}
           />
+          <button
+            onClick={handleSearch}
+            disabled={searching}
+            style={{
+              padding: '14px 20px',
+              borderRadius: '14px',
+              border: 'none',
+              background: colors.forest,
+              color: '#fff',
+              fontSize: '15px',
+              fontWeight: '700',
+              cursor: searching ? 'wait' : 'pointer',
+            }}
+          >
+            {searching ? '...' : '🔍'}
+          </button>
         </div>
       </div>
 
-      {/* Zoo List */}
-      <div className="px-5 pb-8">
+      {/* Results */}
+      <div>
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin text-4xl">🦁</div>
+          <div style={{
+            padding: '40px',
+            textAlign: 'center',
+            color: colors.textMuted,
+          }}>
+            Loading...
           </div>
         ) : zoos.length === 0 ? (
-          <div className="text-center py-12 text-bark">
-            <div className="text-4xl mb-4">🏛️</div>
-            <p>No zoos found</p>
+          <div style={{
+            padding: '40px',
+            textAlign: 'center',
+          }}>
+            <span style={{ fontSize: '48px', display: 'block', marginBottom: '16px' }}>🔍</span>
+            <p style={{ margin: 0, color: colors.textMuted }}>
+              No zoos found. Try searching for a zoo name or city.
+            </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {zoos.map((zoo) => (
               <button
                 key={zoo.id}
                 onClick={() => handleSelectZoo(zoo)}
-                disabled={generating !== null}
-                className="w-full text-left bg-white rounded-[16px] p-4 shadow-[var(--shadow-soft)]
-                           hover:shadow-[var(--shadow-card)] hover:translate-x-1 transition-all
-                           disabled:opacity-50 disabled:cursor-wait"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  padding: '18px 20px',
+                  background: '#fff',
+                  borderRadius: '16px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                  textAlign: 'left',
+                }}
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-[12px] bg-gradient-to-br from-sand to-savanna
-                                  flex items-center justify-center text-2xl">
-                    🏛️
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-forest">{zoo.name}</div>
-                    <div className="text-sm text-bark">
-                      {zoo.city && `${zoo.city}, `}{zoo.country}
-                    </div>
-                  </div>
-                  {generating === zoo.id ? (
-                    <div className="animate-spin text-xl">⏳</div>
-                  ) : (
-                    <span className="text-canopy text-xl">→</span>
-                  )}
+                <div style={{
+                  width: '52px',
+                  height: '52px',
+                  background: `linear-gradient(135deg, ${colors.gold}30 0%, ${colors.forest}20 100%)`,
+                  borderRadius: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '26px',
+                }}>
+                  🏛️
                 </div>
-                {generating === zoo.id && (
-                  <div className="mt-3 text-sm text-canopy animate-pulse">
-                    Generating animal list with AI...
-                  </div>
-                )}
+                <div style={{ flex: 1 }}>
+                  <p style={{
+                    margin: 0,
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: colors.text,
+                  }}>{zoo.name}</p>
+                  <p style={{
+                    margin: '4px 0 0',
+                    fontSize: '13px',
+                    color: colors.textMuted,
+                  }}>
+                    {zoo.city}, {zoo.country}
+                  </p>
+                </div>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  background: colors.warmGray,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: colors.forest,
+                  fontSize: '18px',
+                }}>
+                  →
+                </div>
               </button>
             ))}
           </div>

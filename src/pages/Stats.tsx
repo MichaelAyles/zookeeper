@@ -1,191 +1,195 @@
 import { useEffect, useState } from 'react';
-import { useStore } from '../stores/useStore';
-import { getUserStats, getCategoryStats, getZooStats, getRecentSightings } from '../services/stats';
-import { formatRelativeTime, categoryIcons } from '../lib/utils';
-import type { UserStats, CategoryStats, AnimalCategory } from '../types';
+import { getUserStats, getRecentSightings, getCategoryStats } from '../services/stats';
+import { categoryIcons, formatRelativeTime } from '../lib/utils';
+import { colors } from '../lib/colors';
+import type { UserStats, AnimalCategory, CategoryStats } from '../types';
 import BottomNav from '../components/BottomNav';
 
 export default function Stats() {
-  const profile = useStore((state) => state.profile);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
-  const [zooStats, setZooStats] = useState<Array<{
-    zooId: string;
-    zooName: string;
-    visitCount: number;
-    animalsSpotted: number;
-    totalAnimals: number;
-    completionPercent: number;
-    lastVisit?: Date;
-  }>>([]);
-  const [recentPhotos, setRecentPhotos] = useState<Array<{
-    sighting: { id: string; seenAt: Date; photoBase64?: string };
+  const [recentSightings, setRecentSightings] = useState<Array<{
+    sighting: { id: string; seenAt: Date };
     animal: { commonName: string; category: AnimalCategory };
     zooName: string;
   }>>([]);
 
   useEffect(() => {
-    async function loadStats() {
-      const [userStats, catStats, zStats, photos] = await Promise.all([
-        getUserStats(),
-        getCategoryStats(),
-        getZooStats(),
-        getRecentSightings(8),
-      ]);
-
+    async function loadData() {
+      const userStats = await getUserStats();
       setStats(userStats);
+
+      const catStats = await getCategoryStats();
       setCategoryStats(catStats);
-      setZooStats(zStats);
-      setRecentPhotos(photos);
+
+      const recent = await getRecentSightings(10);
+      setRecentSightings(recent);
     }
-    loadStats();
+    loadData();
   }, []);
 
-  if (!stats) {
-    return (
-      <div className="min-h-screen bg-cream flex items-center justify-center">
-        <div className="animate-spin text-5xl">🦁</div>
-      </div>
-    );
-  }
+  const uniqueSpeciesCount = categoryStats.reduce((sum, cat) => sum + cat.count, 0);
 
   return (
-    <div className="min-h-screen bg-cream pb-24">
+    <div style={{
+      height: '100%',
+      minHeight: '100vh',
+      background: colors.cream,
+      overflow: 'auto',
+      position: 'relative',
+    }}>
+      {/* Status bar spacer */}
+      <div style={{ height: '24px' }} />
+
       {/* Header */}
-      <header className="bg-gradient-to-br from-forest to-forest-light px-5 pt-5 pb-20 relative overflow-hidden">
-        <div className="absolute -top-12 -right-8 w-72 h-72 bg-white/5 rounded-full" />
-
-        <div className="flex items-center justify-between mb-6 relative z-10">
-          <h1 className="font-display text-2xl font-bold text-white">Your Safari Stats</h1>
-          <button className="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center text-xl">
-            📤
-          </button>
-        </div>
-
-        <div className="flex items-center gap-4 relative z-10">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-savanna to-terracotta
-                          flex items-center justify-center text-white font-display text-2xl font-bold
-                          border-3 border-white/30">
-            {profile?.displayName?.[0]?.toUpperCase() || '?'}
-          </div>
-          <div className="text-white">
-            <div className="font-display text-xl font-semibold">{profile?.displayName}</div>
-            <div className="text-sm opacity-80">
-              Wildlife explorer since {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'today'}
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Stats Card */}
-      <div className="bg-white mx-4 -mt-12 rounded-[28px] p-6 shadow-[var(--shadow-card)] relative z-10 grid grid-cols-2 gap-5">
-        <div className="text-center animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <div className="text-2xl mb-2">🏛️</div>
-          <div className="font-display text-4xl font-bold text-forest">{stats.totalZoosVisited}</div>
-          <div className="text-sm text-bark font-medium">Zoos Visited</div>
-        </div>
-        <div className="text-center animate-slide-up" style={{ animationDelay: '0.2s' }}>
-          <div className="text-2xl mb-2">🦒</div>
-          <div className="font-display text-4xl font-bold text-forest">{stats.totalAnimalsSpotted}</div>
-          <div className="text-sm text-bark font-medium">Animals Spotted</div>
-        </div>
-        <div className="text-center animate-slide-up" style={{ animationDelay: '0.3s' }}>
-          <div className="text-2xl mb-2">📸</div>
-          <div className="font-display text-4xl font-bold text-forest">{stats.totalPhotos}</div>
-          <div className="text-sm text-bark font-medium">Photos Taken</div>
-        </div>
-        <div className="text-center animate-slide-up" style={{ animationDelay: '0.4s' }}>
-          <div className="text-2xl mb-2">⭐</div>
-          <div className="font-display text-4xl font-bold text-forest">{stats.totalVisits}</div>
-          <div className="text-sm text-bark font-medium">Total Visits</div>
-        </div>
+      <div style={{ padding: '0 20px 20px' }}>
+        <h1 style={{ margin: '0 0 4px', fontSize: '26px', fontWeight: '700', color: colors.text }}>
+          Your Stats
+        </h1>
+        <p style={{ margin: 0, fontSize: '14px', color: colors.textMuted }}>
+          Track your wildlife journey
+        </p>
       </div>
 
-      <main className="px-4 pt-6">
-        {/* Category Stats */}
-        <section className="mb-8">
-          <h2 className="font-display text-xl font-semibold text-forest mb-4 px-1">By Category</h2>
-          <div className="grid grid-cols-3 gap-3">
-            {categoryStats.map((cat) => (
-              <div
-                key={cat.category}
-                className="bg-white rounded-[16px] p-4 text-center shadow-[var(--shadow-soft)]"
-              >
-                <div className="text-2xl mb-2">{cat.icon}</div>
-                <div className="font-display text-2xl font-bold text-forest">{cat.count}</div>
-                <div className="text-xs text-bark font-semibold uppercase tracking-wide">
-                  {cat.category.slice(0, 6)}
-                </div>
+      {/* Stats Cards */}
+      {stats && (
+        <div style={{ padding: '0 20px 24px' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: '12px',
+          }}>
+            {[
+              { value: stats.totalAnimalsSpotted, label: 'Animals Spotted', emoji: '🦒', color: colors.gold },
+              { value: stats.totalZoosVisited, label: 'Zoos Visited', emoji: '🏛️', color: colors.forest },
+              { value: stats.totalPhotos, label: 'Photos Taken', emoji: '📸', color: colors.terracotta },
+              { value: uniqueSpeciesCount, label: 'Unique Species', emoji: '⭐', color: colors.forestLight },
+            ].map((stat, i) => (
+              <div key={i} style={{
+                background: '#fff',
+                borderRadius: '18px',
+                padding: '20px 16px',
+                textAlign: 'center',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+              }}>
+                <span style={{ fontSize: '32px' }}>{stat.emoji}</span>
+                <p style={{
+                  margin: '12px 0 4px',
+                  fontSize: '28px',
+                  fontWeight: '700',
+                  color: colors.text,
+                }}>{stat.value}</p>
+                <p style={{
+                  margin: 0,
+                  fontSize: '12px',
+                  color: colors.textMuted,
+                  fontWeight: '500',
+                }}>{stat.label}</p>
               </div>
             ))}
           </div>
-        </section>
+        </div>
+      )}
 
-        {/* Zoo Stats */}
-        {zooStats.length > 0 && (
-          <section className="mb-8">
-            <h2 className="font-display text-xl font-semibold text-forest mb-4 px-1">Your Zoos</h2>
-            <div className="flex flex-col gap-3">
-              {zooStats.map((zoo, i) => (
-                <article
-                  key={zoo.zooId}
-                  className="flex items-center gap-3.5 bg-white rounded-[16px] p-4 shadow-[var(--shadow-soft)]"
-                >
-                  <div
-                    className={`w-9 h-9 rounded-[10px] flex items-center justify-center
-                                font-display font-bold text-sm
-                                ${i === 0
-                                  ? 'bg-gradient-to-br from-yellow-400 to-amber-500 text-white'
-                                  : 'bg-sand text-bark'
-                                }`}
-                  >
-                    {i + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-forest">{zoo.zooName}</div>
-                    <div className="text-sm text-bark">
-                      {zoo.visitCount} {zoo.visitCount === 1 ? 'visit' : 'visits'}
-                      {zoo.lastVisit && ` · Last: ${formatRelativeTime(zoo.lastVisit)}`}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-display text-xl font-bold text-canopy">{zoo.completionPercent}%</div>
-                    <div className="text-xs text-bark">{zoo.animalsSpotted}/{zoo.totalAnimals}</div>
-                  </div>
-                </article>
-              ))}
+      {/* Category Breakdown */}
+      {categoryStats.length > 0 && (
+        <div style={{ padding: '0 20px 24px' }}>
+          <h3 style={{ margin: '0 0 14px', fontSize: '16px', fontWeight: '700', color: colors.text }}>
+            By Category
+          </h3>
+          <div style={{
+            background: '#fff',
+            borderRadius: '16px',
+            padding: '16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+          }}>
+            {categoryStats.filter(cat => cat.count > 0).map((catStat, i, arr) => (
+              <div key={catStat.category} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '10px 0',
+                borderBottom: i < arr.length - 1 ? `1px solid ${colors.sand}` : 'none',
+              }}>
+                <span style={{ fontSize: '24px' }}>
+                  {categoryIcons[catStat.category]}
+                </span>
+                <span style={{
+                  flex: 1,
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: colors.text,
+                }}>
+                  {catStat.category}
+                </span>
+                <span style={{
+                  fontSize: '14px',
+                  fontWeight: '700',
+                  color: colors.forest,
+                }}>
+                  {catStat.count}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recent Activity */}
+      {recentSightings.length > 0 && (
+        <div style={{ padding: '0 20px 100px' }}>
+          <h3 style={{ margin: '0 0 14px', fontSize: '16px', fontWeight: '700', color: colors.text }}>
+            Recent Activity
+          </h3>
+          {recentSightings.map((item) => (
+            <div key={item.sighting.id} style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+              padding: '14px 16px',
+              background: '#fff',
+              borderRadius: '14px',
+              marginBottom: '8px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                background: colors.warmGray,
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '24px',
+              }}>
+                {categoryIcons[item.animal.category]}
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{
+                  margin: 0,
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  color: colors.text,
+                }}>{item.animal.commonName}</p>
+                <p style={{
+                  margin: '3px 0 0',
+                  fontSize: '12px',
+                  color: colors.textMuted,
+                }}>{item.zooName}</p>
+              </div>
+              <p style={{
+                margin: 0,
+                fontSize: '12px',
+                color: colors.textLight,
+              }}>
+                {formatRelativeTime(item.sighting.seenAt)}
+              </p>
             </div>
-          </section>
-        )}
+          ))}
+        </div>
+      )}
 
-        {/* Recent Photos */}
-        {recentPhotos.length > 0 && (
-          <section className="mb-8">
-            <h2 className="font-display text-xl font-semibold text-forest mb-4 px-1">Recent Photos</h2>
-            <div className="grid grid-cols-4 gap-2">
-              {recentPhotos.slice(0, 8).map((item) => (
-                <div
-                  key={item.sighting.id}
-                  className="aspect-square rounded-[12px] bg-sand overflow-hidden
-                             flex items-center justify-center text-3xl"
-                >
-                  {item.sighting.photoBase64 ? (
-                    <img
-                      src={`data:image/jpeg;base64,${item.sighting.photoBase64}`}
-                      alt={item.animal.commonName}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    categoryIcons[item.animal.category]
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-      </main>
-
-      <BottomNav active="stats" />
+      <BottomNav active="profile" />
     </div>
   );
 }

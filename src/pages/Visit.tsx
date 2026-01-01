@@ -4,236 +4,258 @@ import { useStore } from '../stores/useStore';
 import { getVisitById } from '../services/visits';
 import { getZooById } from '../services/zoos';
 import { getAnimalsByZoo } from '../services/animals';
-import { buildChecklist, toggleSighting } from '../services/sightings';
-import { groupBy, percentage, categoryIcons, categoryColors, cn } from '../lib/utils';
-import type { ChecklistItem, AnimalCategory } from '../types';
+import { getSightingsByVisit, toggleSighting } from '../services/sightings';
+import { categoryIcons } from '../lib/utils';
+import { colors } from '../lib/colors';
+import type { Zoo, ZooAnimal, Sighting, AnimalCategory } from '../types';
 import BottomNav from '../components/BottomNav';
+
+interface ChecklistItem {
+  animal: ZooAnimal;
+  sighting: Sighting | null;
+}
 
 export default function Visit() {
   const { visitId } = useParams<{ visitId: string }>();
   const navigate = useNavigate();
-  const { activeVisit, activeZoo, checklist, setActiveVisit, setChecklist, updateChecklistItem } = useStore();
+  const setActiveVisit = useStore((state) => state.setActiveVisit);
 
+  const [zoo, setZoo] = useState<Zoo | null>(null);
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [filter, setFilter] = useState<AnimalCategory | 'all'>('all');
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'seen' | 'remaining'>('all');
 
   useEffect(() => {
-    async function loadVisit() {
+    async function loadData() {
       if (!visitId) return;
 
-      try {
-        const visit = await getVisitById(visitId);
-        if (!visit) {
-          navigate('/');
-          return;
-        }
-
-        const zoo = await getZooById(visit.zooId);
-        if (!zoo) {
-          navigate('/');
-          return;
-        }
-
-        setActiveVisit(visit, zoo);
-
-        const animals = await getAnimalsByZoo(visit.zooId);
-        const checklistItems = await buildChecklist(animals, visit.id);
-        setChecklist(checklistItems);
-      } catch (error) {
-        console.error('Failed to load visit:', error);
-      } finally {
-        setLoading(false);
+      const visitData = await getVisitById(visitId);
+      if (!visitData) {
+        navigate('/');
+        return;
       }
+
+      const zooData = await getZooById(visitData.zooId);
+      const animals = await getAnimalsByZoo(visitData.zooId);
+      const sightings = await getSightingsByVisit(visitId);
+
+      const sightingMap = new Map(sightings.map(s => [s.animalId, s]));
+      const checklistItems: ChecklistItem[] = animals.map(animal => ({
+        animal,
+        sighting: sightingMap.get(animal.id) || null,
+      }));
+
+      setZoo(zooData || null);
+      setChecklist(checklistItems);
+      setActiveVisit(visitData, zooData || null);
+      setLoading(false);
     }
-    loadVisit();
-  }, [visitId, navigate, setActiveVisit, setChecklist]);
+    loadData();
+  }, [visitId, navigate, setActiveVisit]);
 
-  async function handleToggle(animalId: string) {
-    if (!activeVisit) return;
+  const handleToggle = async (animal: ZooAnimal) => {
+    if (!visitId) return;
+    await toggleSighting(visitId, animal.id);
 
-    const result = await toggleSighting(activeVisit.id, animalId);
-    updateChecklistItem(animalId, {
-      seen: result.added,
-      sighting: result.sighting,
-    });
-  }
+    // Reload sightings
+    const sightings = await getSightingsByVisit(visitId);
+    const sightingMap = new Map(sightings.map(s => [s.animalId, s]));
+    setChecklist(prev =>
+      prev.map(item => ({
+        ...item,
+        sighting: sightingMap.get(item.animal.id) || null,
+      }))
+    );
+  };
 
-  const filteredChecklist = checklist.filter((item) => {
-    if (filter === 'seen') return item.seen;
-    if (filter === 'remaining') return !item.seen;
-    return true;
-  });
+  const categories: AnimalCategory[] = ['Mammals', 'Birds', 'Reptiles', 'Amphibians', 'Fish', 'Invertebrates'];
+  const filterOptions: Array<{ label: string; value: AnimalCategory | 'all' }> = [
+    { label: 'All', value: 'all' },
+    { label: '🦁 Mammals', value: 'Mammals' },
+    { label: '🦅 Birds', value: 'Birds' },
+    { label: '🐊 Reptiles', value: 'Reptiles' },
+  ];
 
-  const grouped = groupBy(filteredChecklist, (item) => item.category);
-  const seenCount = checklist.filter((i) => i.seen).length;
-  const totalCount = checklist.length;
+  const filteredChecklist = filter === 'all'
+    ? checklist
+    : checklist.filter(item => item.animal.category === filter);
+
+  const groupedByCategory = categories.reduce((acc, category) => {
+    const items = filteredChecklist.filter(item => item.animal.category === category);
+    if (items.length > 0) {
+      acc[category] = items;
+    }
+    return acc;
+  }, {} as Record<AnimalCategory, ChecklistItem[]>);
+
+  const spottedCount = checklist.filter(item => item.sighting).length;
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-cream flex items-center justify-center">
-        <div className="animate-spin text-5xl">🦁</div>
+      <div style={{
+        height: '100vh',
+        background: colors.cream,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <p style={{ color: colors.textMuted }}>Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-cream pb-36">
+    <div style={{
+      height: '100%',
+      minHeight: '100vh',
+      background: colors.cream,
+      overflow: 'auto',
+      position: 'relative',
+    }}>
+      {/* Status bar spacer */}
+      <div style={{ height: '24px' }} />
+
       {/* Header */}
-      <header className="sticky top-0 bg-cream z-20 px-5 pt-4 pb-3 border-b border-forest/5">
-        <div className="flex items-center justify-between mb-3">
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-forest font-semibold
-                       hover:bg-forest/5 -ml-2 px-2 py-1 rounded-[12px] transition-colors"
-          >
-            <span className="text-xl">←</span>
-            <span>Back</span>
-          </button>
-          <div className="flex gap-2">
-            <button className="w-10 h-10 rounded-full bg-white shadow-[var(--shadow-soft)]
-                               flex items-center justify-center text-lg">
-              🔍
+      <div style={{ padding: '0 20px 16px' }}>
+        <h1 style={{ margin: '0 0 4px', fontSize: '26px', fontWeight: '700', color: colors.text }}>
+          {zoo?.name || 'Collection'}
+        </h1>
+        <p style={{ margin: 0, fontSize: '14px', color: colors.textMuted }}>
+          {spottedCount} of {checklist.length} species spotted
+        </p>
+      </div>
+
+      {/* Filter tabs */}
+      <div style={{ padding: '0 20px 20px' }}>
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          overflowX: 'auto',
+          paddingBottom: '4px',
+        }}>
+          {filterOptions.map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => setFilter(tab.value)}
+              style={{
+                padding: '10px 16px',
+                borderRadius: '12px',
+                border: 'none',
+                background: filter === tab.value ? colors.forest : '#fff',
+                color: filter === tab.value ? '#fff' : colors.text,
+                fontSize: '14px',
+                fontWeight: '600',
+                whiteSpace: 'nowrap',
+                cursor: 'pointer',
+                boxShadow: filter === tab.value ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',
+              }}
+            >
+              {tab.label}
             </button>
-          </div>
+          ))}
         </div>
-        <div className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-bold text-forest">{activeZoo?.name}</h1>
-          <div className="flex items-center gap-2 bg-forest text-white px-3.5 py-2 rounded-full text-sm font-semibold">
-            <span>{seenCount}/{totalCount}</span>
-            <div className="w-10 h-1.5 bg-white/30 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-savanna rounded-full"
-                style={{ width: `${percentage(seenCount, totalCount)}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Filter Tabs */}
-      <div className="flex gap-2 px-5 py-3 overflow-x-auto hide-scrollbar">
-        {(['all', 'seen', 'remaining'] as const).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={cn(
-              'px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all',
-              'border-2 shadow-[var(--shadow-soft)]',
-              filter === f
-                ? 'bg-forest text-white border-forest'
-                : 'bg-white text-bark border-transparent hover:border-canopy'
-            )}
-          >
-            {f.charAt(0).toUpperCase() + f.slice(1)}
-            <span className="ml-2 px-2 py-0.5 rounded-full bg-black/10 text-xs">
-              {f === 'all' ? totalCount : f === 'seen' ? seenCount : totalCount - seenCount}
-            </span>
-          </button>
-        ))}
       </div>
 
-      {/* Checklist */}
-      <main className="px-5 pt-2">
-        {Object.entries(grouped).map(([category, items]) => (
-          <section key={category} className="mb-6 animate-fade-in">
-            <div className="flex items-center gap-2.5 mb-3 px-1">
-              <div className={cn('w-8 h-8 rounded-[10px] flex items-center justify-center text-lg',
-                categoryColors[category as AnimalCategory]?.split(' ')[0] || 'bg-sand')}>
-                {categoryIcons[category as AnimalCategory]}
+      {/* Grid of animals */}
+      <div style={{ padding: '0 20px 100px' }}>
+        {Object.entries(groupedByCategory).map(([category, items]) => {
+          const categorySpotted = items.filter(item => item.sighting).length;
+          return (
+            <div key={category}>
+              {/* Category header */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                marginBottom: '12px',
+              }}>
+                <span style={{ fontSize: '20px' }}>{categoryIcons[category as AnimalCategory]}</span>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: colors.text }}>
+                  {category}
+                </h3>
+                <span style={{
+                  marginLeft: 'auto',
+                  fontSize: '13px',
+                  color: colors.textMuted,
+                }}>
+                  {categorySpotted} spotted
+                </span>
               </div>
-              <h2 className="font-display text-lg font-semibold text-forest">{category}</h2>
-              <span className="ml-auto text-sm text-bark font-semibold">
-                <span className="text-canopy">{items.filter(i => i.seen).length}</span>
-                {' / '}
-                {items.length}
-              </span>
-            </div>
-            <div className="flex flex-col gap-2.5">
-              {items.map((item) => (
-                <AnimalCard
-                  key={item.id}
-                  item={item}
-                  onToggle={() => handleToggle(item.id)}
-                  onCamera={() => navigate('/camera', { state: { animalId: item.id } })}
-                />
-              ))}
-            </div>
-          </section>
-        ))}
-      </main>
 
-      {/* FAB - Identify Animal */}
-      <div className="fixed bottom-24 left-5 right-5 z-30">
-        <button
-          onClick={() => navigate('/camera')}
-          className="w-full py-4.5 bg-gradient-to-r from-terracotta to-[#d4714f] text-white
-                     rounded-[24px] font-display text-lg font-semibold
-                     flex items-center justify-center gap-3
-                     shadow-[0_8px_32px_rgba(196,93,58,0.4)]
-                     hover:translate-y-[-2px] transition-transform"
-        >
-          <span className="text-2xl animate-pulse-soft">📸</span>
-          Identify Animal
-        </button>
+              {/* Animal grid */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '10px',
+                marginBottom: '28px',
+              }}>
+                {items.map((item) => {
+                  const spotted = !!item.sighting;
+                  const isRecent = item.sighting &&
+                    new Date(item.sighting.seenAt) > new Date(Date.now() - 60 * 60 * 1000);
+
+                  return (
+                    <button
+                      key={item.animal.id}
+                      onClick={() => handleToggle(item.animal)}
+                      style={{
+                        aspectRatio: '1',
+                        background: spotted ? '#fff' : colors.warmGray,
+                        borderRadius: '16px',
+                        border: 'none',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        position: 'relative',
+                        opacity: spotted ? 1 : 0.5,
+                        boxShadow: spotted ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                        cursor: 'pointer',
+                        padding: '8px',
+                      }}
+                    >
+                      {isRecent && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '6px',
+                          right: '6px',
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          background: colors.gold,
+                        }} />
+                      )}
+                      <span style={{ fontSize: '32px', marginBottom: '4px' }}>
+                        {categoryIcons[item.animal.category]}
+                      </span>
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        color: spotted ? colors.text : colors.textMuted,
+                        textAlign: 'center',
+                        lineHeight: '1.2',
+                        maxWidth: '100%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {item.animal.commonName}
+                      </span>
+                      {!spotted && (
+                        <span style={{ fontSize: '10px', color: colors.textLight, marginTop: '2px' }}>
+                          Not seen
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      <BottomNav active="visits" />
+      <BottomNav active="collection" />
     </div>
-  );
-}
-
-function AnimalCard({
-  item,
-  onToggle,
-  onCamera,
-}: {
-  item: ChecklistItem;
-  onToggle: () => void;
-  onCamera: () => void;
-}) {
-  return (
-    <article
-      className={cn(
-        'flex items-center gap-3.5 bg-white rounded-[16px] p-3.5 transition-all cursor-pointer',
-        'shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-card)] hover:translate-x-1',
-        item.seen && 'bg-gradient-to-r from-canopy/5 to-savanna/5 border-l-4 border-canopy'
-      )}
-      onClick={onToggle}
-    >
-      {/* Checkbox */}
-      <div
-        className={cn(
-          'w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-all',
-          item.seen
-            ? 'bg-canopy border-canopy text-white'
-            : 'bg-white border-sand'
-        )}
-      >
-        {item.seen && <span className="text-sm">✓</span>}
-      </div>
-
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <div className="font-semibold text-forest flex items-center gap-2">
-          {item.commonName}
-          {item.sighting?.photoBase64 && <span className="text-xs">📷</span>}
-        </div>
-        <div className="text-sm text-bark italic truncate">{item.scientificName}</div>
-      </div>
-
-      {/* Camera Button */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onCamera();
-        }}
-        className={cn(
-          'w-11 h-11 rounded-[12px] flex items-center justify-center text-xl transition-all',
-          item.seen ? 'bg-canopy/15' : 'bg-sand hover:bg-savanna'
-        )}
-      >
-        📷
-      </button>
-    </article>
   );
 }

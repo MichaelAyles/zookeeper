@@ -1,0 +1,1102 @@
+import React, { useState } from 'react';
+
+// ZOOKEEPER v3 - The Sweet Spot
+// Warm & approachable, but grown-up. Camera-forward, but friendly.
+// Think: Duolingo's polish meets Airbnb's warmth
+
+const ZookeeperV3 = () => {
+  const [activeScreen, setActiveScreen] = useState('all');
+  
+  const screens = [
+    { id: 'all', label: 'All Screens' },
+    { id: 'home', label: 'Home' },
+    { id: 'camera', label: 'Camera' },
+    { id: 'discovery', label: 'Discovery' },
+    { id: 'collection', label: 'Collection' },
+  ];
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(180deg, #F7F4EE 0%, #EDE8DE 100%)',
+      padding: '40px 24px',
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+    }}>
+      {/* Header */}
+      <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '12px',
+          marginBottom: '8px',
+        }}>
+          <div style={{
+            width: '44px',
+            height: '44px',
+            background: '#2D5A3D',
+            borderRadius: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '22px',
+          }}>
+            🦁
+          </div>
+          <h1 style={{
+            fontSize: '28px',
+            fontWeight: '700',
+            color: '#1a2e1a',
+            margin: 0,
+          }}>
+            Zookeeper
+          </h1>
+        </div>
+        <p style={{
+          fontSize: '14px',
+          color: '#6b7c6b',
+          margin: 0,
+        }}>
+          Track your wildlife adventures
+        </p>
+      </div>
+
+      {/* Screen Selector */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '8px',
+        marginBottom: '40px',
+        flexWrap: 'wrap',
+      }}>
+        {screens.map(screen => (
+          <button
+            key={screen.id}
+            onClick={() => setActiveScreen(screen.id)}
+            style={{
+              padding: '10px 20px',
+              borderRadius: '12px',
+              border: 'none',
+              background: activeScreen === screen.id ? '#2D5A3D' : '#fff',
+              color: activeScreen === screen.id ? '#fff' : '#2D5A3D',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              boxShadow: activeScreen === screen.id 
+                ? '0 4px 12px rgba(45, 90, 61, 0.3)' 
+                : '0 2px 8px rgba(0,0,0,0.06)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            {screen.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Phone Mockups */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '32px',
+        flexWrap: 'wrap',
+        maxWidth: '1400px',
+        margin: '0 auto',
+      }}>
+        {(activeScreen === 'all' || activeScreen === 'home') && <HomeScreen />}
+        {(activeScreen === 'all' || activeScreen === 'camera') && <CameraScreen />}
+        {(activeScreen === 'all' || activeScreen === 'discovery') && <DiscoveryScreen />}
+        {(activeScreen === 'all' || activeScreen === 'collection') && <CollectionScreen />}
+      </div>
+    </div>
+  );
+};
+
+// Phone Frame - Clean, not too heavy
+const PhoneFrame = ({ children, label }) => (
+  <div style={{ textAlign: 'center' }}>
+    <div style={{
+      width: '310px',
+      height: '670px',
+      background: '#1a1a1a',
+      borderRadius: '48px',
+      padding: '11px',
+      boxShadow: '0 25px 60px rgba(0,0,0,0.2)',
+      position: 'relative',
+    }}>
+      {/* Dynamic Island */}
+      <div style={{
+        position: 'absolute',
+        top: '18px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '95px',
+        height: '28px',
+        background: '#000',
+        borderRadius: '20px',
+        zIndex: 10,
+      }} />
+      
+      {/* Screen */}
+      <div style={{
+        width: '100%',
+        height: '100%',
+        borderRadius: '40px',
+        overflow: 'hidden',
+        position: 'relative',
+      }}>
+        {children}
+      </div>
+    </div>
+    <p style={{
+      marginTop: '16px',
+      fontSize: '13px',
+      fontWeight: '600',
+      color: '#2D5A3D',
+    }}>
+      {label}
+    </p>
+  </div>
+);
+
+// Colors used throughout
+const colors = {
+  forest: '#2D5A3D',
+  forestLight: '#3D7A52',
+  cream: '#FAF8F4',
+  warmGray: '#F2EFE9',
+  sand: '#E8E2D6',
+  terracotta: '#D4654A',
+  gold: '#D4A855',
+  text: '#1a2e1a',
+  textMuted: '#6b7c6b',
+  textLight: '#9ca89c',
+};
+
+// Screen 1: Home Dashboard
+const HomeScreen = () => (
+  <PhoneFrame label="Home">
+    <div style={{
+      height: '100%',
+      background: colors.cream,
+      overflow: 'auto',
+    }}>
+      {/* Status bar spacer */}
+      <div style={{ height: '54px' }} />
+      
+      {/* Header */}
+      <div style={{ padding: '0 20px 20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <p style={{ margin: 0, fontSize: '14px', color: colors.textMuted }}>Good afternoon</p>
+            <h1 style={{ margin: '4px 0 0', fontSize: '26px', fontWeight: '700', color: colors.text }}>
+              Mike 👋
+            </h1>
+          </div>
+          <div style={{
+            width: '44px',
+            height: '44px',
+            borderRadius: '50%',
+            background: `linear-gradient(135deg, ${colors.gold} 0%, ${colors.terracotta} 100%)`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '18px',
+            fontWeight: '700',
+            color: '#fff',
+          }}>
+            M
+          </div>
+        </div>
+      </div>
+
+      {/* Active Visit Card */}
+      <div style={{ padding: '0 20px 20px' }}>
+        <div style={{
+          background: colors.forest,
+          borderRadius: '20px',
+          padding: '22px',
+          color: '#fff',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          {/* Subtle pattern */}
+          <div style={{
+            position: 'absolute',
+            right: '-30px',
+            top: '-30px',
+            width: '120px',
+            height: '120px',
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.08)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            right: '30px',
+            bottom: '-40px',
+            width: '80px',
+            height: '80px',
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.05)',
+          }} />
+          
+          <div style={{ position: 'relative' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <div style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: '#6EE7B7',
+              }} />
+              <span style={{ fontSize: '12px', fontWeight: '600', opacity: 0.9 }}>Active visit</span>
+            </div>
+            
+            <h2 style={{ margin: '0 0 16px', fontSize: '20px', fontWeight: '700' }}>
+              Chester Zoo
+            </h2>
+            
+            {/* Progress */}
+            <div style={{ marginBottom: '18px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '14px', opacity: 0.9 }}>33 of 67 animals</span>
+                <span style={{ fontSize: '14px', fontWeight: '700' }}>49%</span>
+              </div>
+              <div style={{
+                height: '6px',
+                background: 'rgba(255,255,255,0.2)',
+                borderRadius: '3px',
+                overflow: 'hidden',
+              }}>
+                <div style={{
+                  width: '49%',
+                  height: '100%',
+                  background: colors.gold,
+                  borderRadius: '3px',
+                }} />
+              </div>
+            </div>
+
+            <button style={{
+              width: '100%',
+              padding: '14px',
+              borderRadius: '12px',
+              border: 'none',
+              background: '#fff',
+              color: colors.forest,
+              fontSize: '15px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+            }}>
+              <span style={{ fontSize: '18px' }}>📷</span>
+              Spot an Animal
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Row */}
+      <div style={{ padding: '0 20px 20px' }}>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          {[
+            { value: '127', label: 'Animals', emoji: '🦒' },
+            { value: '8', label: 'Zoos', emoji: '🏛️' },
+            { value: '89', label: 'Photos', emoji: '📸' },
+          ].map((stat, i) => (
+            <div key={i} style={{
+              flex: 1,
+              background: '#fff',
+              borderRadius: '16px',
+              padding: '16px 12px',
+              textAlign: 'center',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            }}>
+              <span style={{ fontSize: '24px' }}>{stat.emoji}</span>
+              <p style={{
+                margin: '8px 0 2px',
+                fontSize: '22px',
+                fontWeight: '700',
+                color: colors.text,
+              }}>{stat.value}</p>
+              <p style={{
+                margin: 0,
+                fontSize: '12px',
+                color: colors.textMuted,
+                fontWeight: '500',
+              }}>{stat.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent Sightings */}
+      <div style={{ padding: '0 20px 100px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: colors.text }}>
+            Recent sightings
+          </h3>
+          <span style={{ fontSize: '14px', color: colors.forest, fontWeight: '600' }}>See all</span>
+        </div>
+        
+        {[
+          { emoji: '🦁', name: 'African Lion', time: '2 hours ago', isNew: true },
+          { emoji: '🦒', name: 'Rothschild Giraffe', time: '3 hours ago', isNew: false },
+          { emoji: '🐘', name: 'Asian Elephant', time: 'Yesterday', isNew: false },
+        ].map((animal, i) => (
+          <div key={i} style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            padding: '14px 16px',
+            background: '#fff',
+            borderRadius: '14px',
+            marginBottom: '8px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+          }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              background: animal.isNew ? `${colors.gold}20` : colors.warmGray,
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '24px',
+            }}>
+              {animal.emoji}
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{
+                margin: 0,
+                fontSize: '15px',
+                fontWeight: '600',
+                color: colors.text,
+              }}>{animal.name}</p>
+              <p style={{
+                margin: '3px 0 0',
+                fontSize: '13px',
+                color: colors.textMuted,
+              }}>{animal.time}</p>
+            </div>
+            {animal.isNew && (
+              <div style={{
+                padding: '4px 10px',
+                background: colors.gold,
+                borderRadius: '6px',
+                color: '#fff',
+                fontSize: '11px',
+                fontWeight: '700',
+              }}>
+                NEW
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Bottom Nav */}
+      <div style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: '12px 24px 28px',
+        background: 'linear-gradient(0deg, #fff 60%, transparent 100%)',
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-around',
+          background: '#fff',
+          borderRadius: '20px',
+          padding: '12px 8px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+        }}>
+          {[
+            { icon: '🏠', label: 'Home', active: true },
+            { icon: '📷', label: 'Spot', active: false },
+            { icon: '📖', label: 'Collection', active: false },
+            { icon: '👤', label: 'Profile', active: false },
+          ].map((item, i) => (
+            <div key={i} style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '6px 16px',
+              borderRadius: '12px',
+              background: item.active ? `${colors.forest}15` : 'transparent',
+            }}>
+              <span style={{ fontSize: '20px' }}>{item.icon}</span>
+              <span style={{
+                fontSize: '11px',
+                fontWeight: '600',
+                color: item.active ? colors.forest : colors.textMuted,
+              }}>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </PhoneFrame>
+);
+
+// Screen 2: Camera
+const CameraScreen = () => (
+  <PhoneFrame label="Camera">
+    <div style={{
+      height: '100%',
+      position: 'relative',
+      background: '#1a1a1a',
+    }}>
+      {/* Viewfinder background */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: `
+          linear-gradient(180deg, rgba(45, 90, 61, 0.3) 0%, rgba(107, 142, 107, 0.2) 50%, rgba(139, 115, 85, 0.3) 100%)
+        `,
+      }}>
+        {/* Suggestion of foliage/animal */}
+        <div style={{
+          position: 'absolute',
+          top: '35%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          fontSize: '140px',
+          opacity: 0.15,
+        }}>
+          🦁
+        </div>
+      </div>
+
+      {/* Top bar */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        padding: '56px 20px 16px',
+        background: 'linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      }}>
+        <button style={{
+          padding: '10px 16px',
+          borderRadius: '12px',
+          border: 'none',
+          background: 'rgba(255,255,255,0.15)',
+          backdropFilter: 'blur(10px)',
+          color: '#fff',
+          fontSize: '14px',
+          fontWeight: '600',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+        }}>
+          <span>📍</span> Chester Zoo
+        </button>
+        <button style={{
+          width: '40px',
+          height: '40px',
+          borderRadius: '12px',
+          border: 'none',
+          background: 'rgba(255,255,255,0.15)',
+          backdropFilter: 'blur(10px)',
+          fontSize: '18px',
+          cursor: 'pointer',
+        }}>
+          ⚡
+        </button>
+      </div>
+
+      {/* Detection frame */}
+      <div style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+      }}>
+        <div style={{
+          width: '200px',
+          height: '200px',
+          position: 'relative',
+        }}>
+          {/* Corners */}
+          {[
+            { top: 0, left: 0, borderTop: `3px solid ${colors.gold}`, borderLeft: `3px solid ${colors.gold}` },
+            { top: 0, right: 0, borderTop: `3px solid ${colors.gold}`, borderRight: `3px solid ${colors.gold}` },
+            { bottom: 0, left: 0, borderBottom: `3px solid ${colors.gold}`, borderLeft: `3px solid ${colors.gold}` },
+            { bottom: 0, right: 0, borderBottom: `3px solid ${colors.gold}`, borderRight: `3px solid ${colors.gold}` },
+          ].map((style, i) => (
+            <div key={i} style={{
+              position: 'absolute',
+              width: '32px',
+              height: '32px',
+              ...style,
+              borderRadius: '4px',
+            }} />
+          ))}
+          
+          {/* Scanning indicator */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            textAlign: 'center',
+          }}>
+            <div style={{
+              padding: '10px 18px',
+              background: 'rgba(0,0,0,0.6)',
+              backdropFilter: 'blur(10px)',
+              borderRadius: '12px',
+              color: '#fff',
+              fontSize: '14px',
+              fontWeight: '600',
+            }}>
+              <span style={{ marginRight: '8px' }}>🔍</span>
+              Scanning...
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom section */}
+      <div style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: '20px 20px 36px',
+        background: 'linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent 100%)',
+      }}>
+        {/* Recent strip */}
+        <div style={{
+          display: 'flex',
+          gap: '10px',
+          marginBottom: '20px',
+          justifyContent: 'center',
+        }}>
+          {['🦒', '🐘', '🦓'].map((emoji, i) => (
+            <div key={i} style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: '12px',
+              background: 'rgba(255,255,255,0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '26px',
+            }}>
+              {emoji}
+            </div>
+          ))}
+          <div style={{
+            width: '52px',
+            height: '52px',
+            borderRadius: '12px',
+            background: 'rgba(255,255,255,0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'rgba(255,255,255,0.6)',
+            fontSize: '13px',
+            fontWeight: '600',
+          }}>
+            +30
+          </div>
+        </div>
+
+        {/* Shutter */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 24px',
+        }}>
+          <button style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '14px',
+            border: 'none',
+            background: 'rgba(255,255,255,0.15)',
+            fontSize: '22px',
+            cursor: 'pointer',
+          }}>
+            🖼️
+          </button>
+
+          <button style={{
+            width: '76px',
+            height: '76px',
+            borderRadius: '50%',
+            border: '4px solid #fff',
+            background: 'rgba(255,255,255,0.1)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <div style={{
+              width: '58px',
+              height: '58px',
+              borderRadius: '50%',
+              background: '#fff',
+            }} />
+          </button>
+
+          <button style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '14px',
+            border: 'none',
+            background: 'rgba(255,255,255,0.15)',
+            fontSize: '22px',
+            cursor: 'pointer',
+          }}>
+            🔄
+          </button>
+        </div>
+      </div>
+    </div>
+  </PhoneFrame>
+);
+
+// Screen 3: Discovery Result
+const DiscoveryScreen = () => (
+  <PhoneFrame label="Discovery">
+    <div style={{
+      height: '100%',
+      background: '#1a1a1a',
+      position: 'relative',
+    }}>
+      {/* Photo background */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: `
+          linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.95) 80%),
+          linear-gradient(135deg, #C9A66B 0%, #8B7355 50%, #5A4A2F 100%)
+        `,
+      }}>
+        <div style={{
+          position: 'absolute',
+          top: '22%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          fontSize: '150px',
+          opacity: 0.25,
+        }}>
+          🦁
+        </div>
+      </div>
+
+      {/* Success badge */}
+      <div style={{
+        position: 'absolute',
+        top: '60px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '12px 20px',
+          background: colors.forest,
+          borderRadius: '14px',
+          boxShadow: '0 8px 24px rgba(45, 90, 61, 0.4)',
+        }}>
+          <span style={{ fontSize: '18px' }}>✨</span>
+          <span style={{
+            fontSize: '15px',
+            fontWeight: '700',
+            color: '#fff',
+          }}>
+            Animal Identified!
+          </span>
+        </div>
+      </div>
+
+      {/* Result card */}
+      <div style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: colors.cream,
+        borderRadius: '28px 28px 0 0',
+        padding: '28px 24px 40px',
+      }}>
+        {/* Animal info */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          marginBottom: '20px',
+        }}>
+          <div style={{
+            width: '68px',
+            height: '68px',
+            background: `linear-gradient(135deg, ${colors.gold}30 0%, ${colors.terracotta}20 100%)`,
+            borderRadius: '18px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '36px',
+          }}>
+            🦁
+          </div>
+          <div>
+            <h2 style={{
+              margin: 0,
+              fontSize: '24px',
+              fontWeight: '700',
+              color: colors.text,
+            }}>African Lion</h2>
+            <p style={{
+              margin: '4px 0 0',
+              fontSize: '14px',
+              color: colors.textMuted,
+              fontStyle: 'italic',
+            }}>Panthera leo</p>
+          </div>
+        </div>
+
+        {/* Tags */}
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          flexWrap: 'wrap',
+          marginBottom: '20px',
+        }}>
+          <div style={{
+            padding: '8px 14px',
+            background: `${colors.forest}15`,
+            borderRadius: '10px',
+            color: colors.forest,
+            fontSize: '13px',
+            fontWeight: '600',
+          }}>
+            94% match
+          </div>
+          <div style={{
+            padding: '8px 14px',
+            background: colors.warmGray,
+            borderRadius: '10px',
+            color: colors.textMuted,
+            fontSize: '13px',
+            fontWeight: '600',
+          }}>
+            🦁 Mammal
+          </div>
+          <div style={{
+            padding: '8px 14px',
+            background: `${colors.gold}20`,
+            borderRadius: '10px',
+            color: colors.terracotta,
+            fontSize: '13px',
+            fontWeight: '600',
+          }}>
+            ⭐ First sighting!
+          </div>
+        </div>
+
+        {/* Fun fact */}
+        <div style={{
+          padding: '16px',
+          background: '#fff',
+          borderRadius: '14px',
+          borderLeft: `4px solid ${colors.gold}`,
+          marginBottom: '24px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+        }}>
+          <p style={{
+            margin: '0 0 6px',
+            fontSize: '12px',
+            fontWeight: '700',
+            color: colors.gold,
+            letterSpacing: '0.5px',
+          }}>
+            DID YOU KNOW?
+          </p>
+          <p style={{
+            margin: 0,
+            fontSize: '14px',
+            color: colors.text,
+            lineHeight: '1.5',
+          }}>
+            A lion's roar can be heard from 8 kilometres away – making it the loudest of all big cats.
+          </p>
+        </div>
+
+        {/* Actions */}
+        <button style={{
+          width: '100%',
+          padding: '16px',
+          borderRadius: '14px',
+          border: 'none',
+          background: colors.forest,
+          color: '#fff',
+          fontSize: '16px',
+          fontWeight: '700',
+          cursor: 'pointer',
+          marginBottom: '10px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+        }}>
+          Add to Collection ✓
+        </button>
+        <button style={{
+          width: '100%',
+          padding: '14px',
+          borderRadius: '12px',
+          border: `2px solid ${colors.sand}`,
+          background: 'transparent',
+          color: colors.textMuted,
+          fontSize: '14px',
+          fontWeight: '600',
+          cursor: 'pointer',
+        }}>
+          Not right? Try again
+        </button>
+      </div>
+    </div>
+  </PhoneFrame>
+);
+
+// Screen 4: Collection
+const CollectionScreen = () => (
+  <PhoneFrame label="Collection">
+    <div style={{
+      height: '100%',
+      background: colors.cream,
+      overflow: 'auto',
+    }}>
+      {/* Status bar spacer */}
+      <div style={{ height: '54px' }} />
+      
+      {/* Header */}
+      <div style={{ padding: '0 20px 16px' }}>
+        <h1 style={{ margin: '0 0 4px', fontSize: '26px', fontWeight: '700', color: colors.text }}>
+          Collection
+        </h1>
+        <p style={{ margin: 0, fontSize: '14px', color: colors.textMuted }}>
+          127 species spotted
+        </p>
+      </div>
+
+      {/* Filter tabs */}
+      <div style={{ padding: '0 20px 20px' }}>
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          overflowX: 'auto',
+          paddingBottom: '4px',
+        }}>
+          {[
+            { label: 'All', active: true },
+            { label: '🦁 Mammals', active: false },
+            { label: '🦅 Birds', active: false },
+            { label: '🐊 Reptiles', active: false },
+          ].map((tab, i) => (
+            <button key={i} style={{
+              padding: '10px 16px',
+              borderRadius: '12px',
+              border: 'none',
+              background: tab.active ? colors.forest : '#fff',
+              color: tab.active ? '#fff' : colors.text,
+              fontSize: '14px',
+              fontWeight: '600',
+              whiteSpace: 'nowrap',
+              cursor: 'pointer',
+              boxShadow: tab.active ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',
+            }}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Grid of animals */}
+      <div style={{ padding: '0 20px 100px' }}>
+        {/* Category header */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          marginBottom: '12px',
+        }}>
+          <span style={{ fontSize: '20px' }}>🦁</span>
+          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: colors.text }}>
+            Mammals
+          </h3>
+          <span style={{
+            marginLeft: 'auto',
+            fontSize: '13px',
+            color: colors.textMuted,
+          }}>
+            45 spotted
+          </span>
+        </div>
+
+        {/* Animal grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '10px',
+          marginBottom: '28px',
+        }}>
+          {[
+            { emoji: '🦁', name: 'Lion', spotted: true, isNew: true },
+            { emoji: '🦒', name: 'Giraffe', spotted: true, isNew: false },
+            { emoji: '🐘', name: 'Elephant', spotted: true, isNew: false },
+            { emoji: '🦓', name: 'Zebra', spotted: true, isNew: false },
+            { emoji: '🦏', name: 'Rhino', spotted: true, isNew: false },
+            { emoji: '🐅', name: 'Tiger', spotted: false, isNew: false },
+          ].map((animal, i) => (
+            <div key={i} style={{
+              aspectRatio: '1',
+              background: animal.spotted ? '#fff' : colors.warmGray,
+              borderRadius: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              opacity: animal.spotted ? 1 : 0.5,
+              boxShadow: animal.spotted ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+            }}>
+              {animal.isNew && (
+                <div style={{
+                  position: 'absolute',
+                  top: '6px',
+                  right: '6px',
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: colors.gold,
+                }} />
+              )}
+              <span style={{ fontSize: '32px', marginBottom: '4px' }}>{animal.emoji}</span>
+              <span style={{
+                fontSize: '11px',
+                fontWeight: '600',
+                color: animal.spotted ? colors.text : colors.textMuted,
+              }}>
+                {animal.name}
+              </span>
+              {!animal.spotted && (
+                <span style={{ fontSize: '10px', color: colors.textLight, marginTop: '2px' }}>
+                  Not seen
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Birds section */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          marginBottom: '12px',
+        }}>
+          <span style={{ fontSize: '20px' }}>🦅</span>
+          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: colors.text }}>
+            Birds
+          </h3>
+          <span style={{
+            marginLeft: 'auto',
+            fontSize: '13px',
+            color: colors.textMuted,
+          }}>
+            32 spotted
+          </span>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '10px',
+        }}>
+          {[
+            { emoji: '🦅', name: 'Eagle', spotted: true },
+            { emoji: '🦩', name: 'Flamingo', spotted: true },
+            { emoji: '🦉', name: 'Owl', spotted: false },
+          ].map((animal, i) => (
+            <div key={i} style={{
+              aspectRatio: '1',
+              background: animal.spotted ? '#fff' : colors.warmGray,
+              borderRadius: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: animal.spotted ? 1 : 0.5,
+              boxShadow: animal.spotted ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+            }}>
+              <span style={{ fontSize: '32px', marginBottom: '4px' }}>{animal.emoji}</span>
+              <span style={{
+                fontSize: '11px',
+                fontWeight: '600',
+                color: animal.spotted ? colors.text : colors.textMuted,
+              }}>
+                {animal.name}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Bottom Nav */}
+      <div style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: '12px 24px 28px',
+        background: 'linear-gradient(0deg, #fff 60%, transparent 100%)',
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-around',
+          background: '#fff',
+          borderRadius: '20px',
+          padding: '12px 8px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+        }}>
+          {[
+            { icon: '🏠', label: 'Home', active: false },
+            { icon: '📷', label: 'Spot', active: false },
+            { icon: '📖', label: 'Collection', active: true },
+            { icon: '👤', label: 'Profile', active: false },
+          ].map((item, i) => (
+            <div key={i} style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '6px 16px',
+              borderRadius: '12px',
+              background: item.active ? `${colors.forest}15` : 'transparent',
+            }}>
+              <span style={{ fontSize: '20px' }}>{item.icon}</span>
+              <span style={{
+                fontSize: '11px',
+                fontWeight: '600',
+                color: item.active ? colors.forest : colors.textMuted,
+              }}>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </PhoneFrame>
+);
+
+export default ZookeeperV3;

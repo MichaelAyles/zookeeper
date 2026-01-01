@@ -5,16 +5,19 @@
 
 /* Design tokens as CSS variables */
 :root {
-  /* Core colors */
-  --color-forest: #1a3a1a;
-  --color-forest-light: #2d5a27;
-  --color-canopy: #4a7c43;
-  --color-savanna: #c4a35a;
-  --color-sand: #e8dcc4;
-  --color-cream: #faf6ed;
-  --color-bark: #5c4033;
-  --color-terracotta: #c45d3a;
-  --color-sky: #87ceeb;
+  /* Core colors - v3 palette */
+  --color-forest: #2D5A3D;
+  --color-forest-light: #3D7A52;
+  --color-cream: #FAF8F4;
+  --color-warm-gray: #F2EFE9;
+  --color-sand: #E8E2D6;
+  --color-terracotta: #D4654A;
+  --color-gold: #D4A855;
+
+  /* Text colors */
+  --color-text: #1a2e1a;
+  --color-text-muted: #6b7c6b;
+  --color-text-light: #9ca89c;
 
   /* Semantic colors */
   --color-success: #22c55e;
@@ -33,9 +36,9 @@
   --font-body: 'Nunito', sans-serif;
 
   /* Shadows */
-  --shadow-soft: 0 4px 20px rgba(26, 58, 26, 0.08);
-  --shadow-card: 0 8px 32px rgba(26, 58, 26, 0.12);
-  --shadow-button: 0 4px 12px rgba(26, 58, 26, 0.2);
+  --shadow-soft: 0 4px 20px rgba(45, 90, 61, 0.08);
+  --shadow-card: 0 8px 32px rgba(45, 90, 61, 0.12);
+  --shadow-button: 0 4px 12px rgba(45, 90, 61, 0.2);
 
   /* Radii */
   --radius-sm: 12px;
@@ -46,18 +49,25 @@
 
 /* Tailwind theme extension */
 @theme {
-  /* Colors */
-  --color-forest: #1a3a1a;
-  --color-forest-light: #2d5a27;
-  --color-canopy: #4a7c43;
-  --color-savanna: #c4a35a;
-  --color-sand: #e8dcc4;
-  --color-cream: #faf6ed;
-  --color-bark: #5c4033;
-  --color-terracotta: #c45d3a;
-  --color-sky: #87ceeb;
+  /* Core colors - v3 palette */
+  --color-forest: #2D5A3D;
+  --color-forest-light: #3D7A52;
+  --color-cream: #FAF8F4;
+  --color-warm-gray: #F2EFE9;
+  --color-sand: #E8E2D6;
+  --color-terracotta: #D4654A;
+  --color-gold: #D4A855;
+
+  /* Text colors */
+  --color-text: #1a2e1a;
+  --color-text-muted: #6b7c6b;
+  --color-text-light: #9ca89c;
+
+  /* Semantic colors */
   --color-success: #22c55e;
   --color-error: #ef4444;
+
+  /* Category colors */
   --color-mammals: #8b5a2b;
   --color-birds: #4a90d9;
   --color-reptiles: #2d8659;
@@ -85,7 +95,7 @@
 html {
   font-family: var(--font-body);
   background: var(--color-cream);
-  color: var(--color-forest);
+  color: var(--color-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -93,6 +103,24 @@ html {
 body {
   min-height: 100vh;
   min-height: 100dvh;
+}
+
+/* Pillarbox: constrain to mobile width on all screens */
+#root {
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  position: relative;
+  background: var(--color-cream);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark background behind pillarbox on desktop */
+@media (min-width: 431px) {
+  html {
+    background: #1e2a24;
+  }
 }
 
 /* Disable pull-to-refresh on mobile */
@@ -122,8 +150,8 @@ body {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes pulse {
@@ -133,7 +161,24 @@ body {
 
 @keyframes bounce {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+
+@keyframes scan {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes scan-line {
+  0% { top: 0; }
+  100% { top: 100%; }
 }
 
 .animate-slide-up {
@@ -141,7 +186,7 @@ body {
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
+  animation: fadeIn 0.4s ease-out;
 }
 
 .animate-pulse-soft {
@@ -149,5 +194,26 @@ body {
 }
 
 .animate-bounce-soft {
-  animation: bounce 0.4s ease;
+  animation: bounce 2s ease-in-out infinite;
+}
+
+.animate-pop {
+  animation: pop 0.3s ease-out;
+}
+
+.animate-scan {
+  animation: scan 2s infinite;
+}
+
+.animate-scan-line {
+  animation: scan-line 1.5s linear infinite;
+}
+
+/* Scrollbar hiding utility */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

@@ -1,340 +1,669 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../stores/useStore';
-import { getAnimalsByZoo } from '../services/animals';
 import { identifyAnimal, findAnimalByName } from '../services/identification';
-import { addAISighting } from '../services/sightings';
-import type { ZooAnimal, IdentificationResult } from '../types';
+import { addAISighting, getSightingsByVisit } from '../services/sightings';
+import { getAnimalsByZoo } from '../services/animals';
+import { categoryIcons } from '../lib/utils';
+import { colors } from '../lib/colors';
+import type { ZooAnimal } from '../types';
+import BottomNav from '../components/BottomNav';
+
+type CameraState = 'scanning' | 'identifying' | 'result' | 'error';
+
+interface IdentifiedAnimal {
+  animal: ZooAnimal;
+  confidence: number;
+  funFact?: string;
+  isFirstSighting: boolean;
+}
 
 export default function Camera() {
   const navigate = useNavigate();
+  const { activeVisit, activeZoo } = useStore();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
-  const { activeVisit, activeZoo, setCapturedImage, updateChecklistItem } = useStore();
+  const [cameraState, setCameraState] = useState<CameraState>('scanning');
+  const [result, setResult] = useState<IdentifiedAnimal | null>(null);
+  const [animals, setAnimals] = useState<ZooAnimal[]>([]);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [capturing, setCapturing] = useState(false);
-  const [identifying, setIdentifying] = useState(false);
-  const [result, setResult] = useState<IdentificationResult | null>(null);
-  const [matchedAnimal, setMatchedAnimal] = useState<ZooAnimal | null>(null);
-  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  // Start camera on mount
-  const startCamera = useCallback(async () => {
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false,
-      });
-      setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
-    } catch (err) {
-      console.error('Camera error:', err);
-      setError('Could not access camera. Please grant permission and try again.');
-    }
+  useEffect(() => {
+    startCamera();
+    loadAnimals();
+    return () => stopCamera();
   }, []);
 
-  const stopCamera = useCallback(() => {
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-      setStream(null);
-    }
-  }, [stream]);
-
-  // Capture photo
-  const capturePhoto = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
-
-    setCapturing(true);
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx?.drawImage(video, 0, 0);
-
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-    const base64 = dataUrl.split(',')[1];
-
-    setCapturedPhoto(dataUrl);
-    setCapturedImage(base64);
-    stopCamera();
-    setCapturing(false);
-
-    // Identify
-    await identifyPhoto(base64);
-  };
-
-  const identifyPhoto = async (base64: string) => {
+  async function loadAnimals() {
     if (!activeZoo) return;
+    const zooAnimals = await getAnimalsByZoo(activeZoo.id);
+    setAnimals(zooAnimals);
+  }
 
-    setIdentifying(true);
-    setError(null);
-
+  async function startCamera() {
     try {
-      const animals = await getAnimalsByZoo(activeZoo.id);
-      const identification = await identifyAnimal(base64, animals);
-
-      setResult(identification);
-
-      if (identification.animal) {
-        const animal = findAnimalByName(identification.animal, animals);
-        setMatchedAnimal(animal || null);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
       }
     } catch (err) {
-      console.error('Identification failed:', err);
-      setError('Failed to identify animal. Please try again.');
-    } finally {
-      setIdentifying(false);
+      setErrorMessage('Camera access denied');
+      setCameraState('error');
     }
-  };
+  }
 
-  const handleConfirm = async () => {
-    if (!activeVisit || !matchedAnimal || !result) return;
+  function stopCamera() {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+  }
 
-    const capturedBase64 = useStore.getState().capturedImage;
+  async function captureAndIdentify() {
+    if (!videoRef.current || !canvasRef.current || !activeVisit || !activeZoo) {
+      if (!activeVisit) {
+        setErrorMessage('Please start a zoo visit first');
+        setCameraState('error');
+      }
+      return;
+    }
+
+    if (animals.length === 0) {
+      setErrorMessage('No animals loaded for this zoo');
+      setCameraState('error');
+      return;
+    }
+
+    setCameraState('identifying');
+
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0);
+    const imageData = canvas.toDataURL('image/jpeg', 0.8);
+    setCapturedImage(imageData);
+
+    try {
+      const identification = await identifyAnimal(imageData, animals);
+
+      if (!identification.animal) {
+        setErrorMessage('Could not identify any animal in the image. Please try again.');
+        setCameraState('error');
+        return;
+      }
+
+      // Find the full animal object
+      const matchedAnimal = findAnimalByName(identification.animal, animals);
+      if (!matchedAnimal) {
+        setErrorMessage('Animal not found in zoo database. Please try again.');
+        setCameraState('error');
+        return;
+      }
+
+      // Check if already sighted
+      const existingSightings = await getSightingsByVisit(activeVisit.id);
+      const alreadySpotted = existingSightings.some(s => s.animalId === matchedAnimal.id);
+
+      setResult({
+        animal: matchedAnimal,
+        confidence: Math.round(identification.confidence * 100),
+        funFact: identification.funFact || matchedAnimal.funFact,
+        isFirstSighting: !alreadySpotted,
+      });
+      setCameraState('result');
+    } catch (err) {
+      setErrorMessage('Could not identify animal. Please try again.');
+      setCameraState('error');
+    }
+  }
+
+  async function handleAddToCollection() {
+    if (!result?.animal || !activeVisit) return;
+
     await addAISighting(
       activeVisit.id,
-      matchedAnimal.id,
+      result.animal.id,
       result.confidence,
-      capturedBase64 || undefined
+      capturedImage || undefined
     );
 
-    updateChecklistItem(matchedAnimal.id, {
-      seen: true,
-      sighting: {
-        id: crypto.randomUUID(),
-        visitId: activeVisit.id,
-        animalId: matchedAnimal.id,
-        seenAt: new Date(),
-        aiIdentified: true,
-        aiConfidence: result.confidence,
-        photoBase64: capturedBase64 || undefined,
-      },
-    });
+    navigate(`/visit/${activeVisit.id}`);
+  }
 
-    navigate(-1);
-  };
-
-  const handleRetake = () => {
+  function handleTryAgain() {
     setResult(null);
-    setMatchedAnimal(null);
-    setCapturedPhoto(null);
+    setErrorMessage('');
     setCapturedImage(null);
-    startCamera();
-  };
+    setCameraState('scanning');
+  }
 
-  // Auto-start camera
-  useState(() => {
-    startCamera();
-    return () => stopCamera();
-  });
-
-  // Result view
-  if (result && capturedPhoto) {
+  // Scanning / Camera view
+  if (cameraState === 'scanning' || cameraState === 'identifying') {
     return (
-      <div className="min-h-screen bg-black flex flex-col">
-        {/* Photo background */}
-        <div className="fixed inset-0">
-          <img src={capturedPhoto} alt="Captured" className="w-full h-full object-cover opacity-40" />
+      <div style={{
+        height: '100vh',
+        position: 'relative',
+        background: '#1a1a1a',
+      }}>
+        {/* Video feed */}
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+          }}
+        />
+        <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+        {/* Overlay gradient */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: `
+            linear-gradient(180deg, rgba(45, 90, 61, 0.3) 0%, rgba(107, 142, 107, 0.2) 50%, rgba(139, 115, 85, 0.3) 100%)
+          `,
+          pointerEvents: 'none',
+        }} />
+
+        {/* Top bar */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          padding: '56px 20px 16px',
+          background: 'linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <button
+            onClick={() => navigate('/')}
+            style={{
+              padding: '10px 16px',
+              borderRadius: '12px',
+              border: 'none',
+              background: 'rgba(255,255,255,0.15)',
+              backdropFilter: 'blur(10px)',
+              color: '#fff',
+              fontSize: '14px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+            }}
+          >
+            <span>📍</span> {activeZoo?.name || 'No Zoo'}
+          </button>
+          <button style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '12px',
+            border: 'none',
+            background: 'rgba(255,255,255,0.15)',
+            backdropFilter: 'blur(10px)',
+            fontSize: '18px',
+            cursor: 'pointer',
+          }}>
+            ⚡
+          </button>
         </div>
 
-        {/* Success overlay */}
-        {result.animal && (
-          <div className="fixed inset-0 bg-gradient-radial from-success/20 to-transparent pointer-events-none" />
-        )}
+        {/* Detection frame */}
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+        }}>
+          <div style={{
+            width: '200px',
+            height: '200px',
+            position: 'relative',
+          }}>
+            {/* Corners */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '32px',
+              height: '32px',
+              borderTop: `3px solid ${colors.gold}`,
+              borderLeft: `3px solid ${colors.gold}`,
+              borderRadius: '4px',
+            }} />
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              width: '32px',
+              height: '32px',
+              borderTop: `3px solid ${colors.gold}`,
+              borderRight: `3px solid ${colors.gold}`,
+              borderRadius: '4px',
+            }} />
+            <div style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              width: '32px',
+              height: '32px',
+              borderBottom: `3px solid ${colors.gold}`,
+              borderLeft: `3px solid ${colors.gold}`,
+              borderRadius: '4px',
+            }} />
+            <div style={{
+              position: 'absolute',
+              bottom: 0,
+              right: 0,
+              width: '32px',
+              height: '32px',
+              borderBottom: `3px solid ${colors.gold}`,
+              borderRight: `3px solid ${colors.gold}`,
+              borderRadius: '4px',
+            }} />
 
-        {/* Header */}
-        <header className="relative z-10 p-4 flex justify-between">
-          <button
-            onClick={() => navigate(-1)}
-            className="w-11 h-11 rounded-full bg-white/15 backdrop-blur-md
-                       flex items-center justify-center text-white text-2xl"
-          >
-            ×
-          </button>
-          <button
-            onClick={handleRetake}
-            className="px-4 py-2 rounded-full bg-white/15 backdrop-blur-md
-                       text-white text-sm font-semibold flex items-center gap-2"
-          >
-            🔄 Retake
-          </button>
-        </header>
-
-        {/* Result */}
-        <main className="flex-1 flex flex-col justify-end p-5 relative z-10">
-          {result.animal && matchedAnimal ? (
-            <>
-              <div className="inline-flex items-center gap-2 bg-success text-white
-                              px-4 py-2 rounded-full text-sm font-bold uppercase tracking-wide mb-4 self-start">
-                <span className="w-5 h-5 bg-white/30 rounded-full flex items-center justify-center text-xs">✓</span>
-                Animal Identified!
+            {/* Scanning indicator */}
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              textAlign: 'center',
+            }}>
+              <div style={{
+                padding: '10px 18px',
+                background: 'rgba(0,0,0,0.6)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: '12px',
+                color: '#fff',
+                fontSize: '14px',
+                fontWeight: '600',
+              }}>
+                <span style={{ marginRight: '8px' }}>
+                  {cameraState === 'identifying' ? '⏳' : '🔍'}
+                </span>
+                {cameraState === 'identifying' ? 'Identifying...' : 'Point at animal'}
               </div>
-
-              <div className="bg-white/95 backdrop-blur-xl rounded-[28px] p-6 shadow-[var(--shadow-card)]">
-                <div className="flex gap-4 mb-5">
-                  <div className="w-16 h-16 rounded-[20px] bg-gradient-to-br from-sand to-savanna
-                                  flex items-center justify-center text-4xl">
-                    🦁
-                  </div>
-                  <div className="flex-1">
-                    <h1 className="font-display text-2xl font-bold text-forest">{matchedAnimal.commonName}</h1>
-                    <p className="text-bark italic">{matchedAnimal.scientificName}</p>
-                    <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full
-                                    bg-success/15 text-success text-sm font-semibold">
-                      <span className="w-2 h-2 bg-success rounded-full" />
-                      {Math.round(result.confidence * 100)}% match
-                    </div>
-                  </div>
-                </div>
-
-                {(result.funFact || matchedAnimal.funFact) && (
-                  <div className="bg-gradient-to-r from-canopy/10 to-savanna/10 rounded-[16px] p-4 mb-6">
-                    <div className="flex gap-3">
-                      <span className="text-2xl">💡</span>
-                      <div>
-                        <div className="text-xs font-bold uppercase tracking-wide text-canopy mb-1">Did you know?</div>
-                        <p className="text-sm text-forest">{result.funFact || matchedAnimal.funFact}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => navigate(-1)}
-                    className="flex-1 py-4 rounded-[16px] border-2 border-sand
-                               font-display font-semibold text-forest
-                               flex items-center justify-center gap-2"
-                  >
-                    ✏️ Wrong?
-                  </button>
-                  <button
-                    onClick={handleConfirm}
-                    className="flex-1 py-4 rounded-[16px] bg-forest text-white
-                               font-display font-semibold shadow-[var(--shadow-button)]
-                               flex items-center justify-center gap-2"
-                  >
-                    ✓ Add to Collection
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="bg-white/95 backdrop-blur-xl rounded-[28px] p-6 shadow-[var(--shadow-card)] text-center">
-              <div className="text-5xl mb-4">🤔</div>
-              <h2 className="font-display text-xl font-bold text-forest mb-2">Couldn't Identify</h2>
-              <p className="text-bark mb-6">
-                We couldn't match this photo to an animal at {activeZoo?.name}. Try getting closer or adjusting the angle.
-              </p>
-              <button
-                onClick={handleRetake}
-                className="w-full py-4 rounded-[16px] bg-forest text-white
-                           font-display font-semibold"
-              >
-                Try Again
-              </button>
             </div>
-          )}
-        </main>
+          </div>
+        </div>
+
+        {/* Bottom section */}
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          padding: '20px 20px 36px',
+          background: 'linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent 100%)',
+        }}>
+          {/* Recent strip */}
+          <div style={{
+            display: 'flex',
+            gap: '10px',
+            marginBottom: '20px',
+            justifyContent: 'center',
+          }}>
+            {['🦒', '🐘', '🦓'].map((emoji, i) => (
+              <div key={i} style={{
+                width: '52px',
+                height: '52px',
+                borderRadius: '12px',
+                background: 'rgba(255,255,255,0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '26px',
+              }}>
+                {emoji}
+              </div>
+            ))}
+            <div style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: '12px',
+              background: 'rgba(255,255,255,0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'rgba(255,255,255,0.6)',
+              fontSize: '13px',
+              fontWeight: '600',
+            }}>
+              +30
+            </div>
+          </div>
+
+          {/* Shutter controls */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0 24px',
+          }}>
+            <button
+              onClick={() => navigate('/')}
+              style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '14px',
+                border: 'none',
+                background: 'rgba(255,255,255,0.15)',
+                fontSize: '22px',
+                cursor: 'pointer',
+              }}
+            >
+              🏠
+            </button>
+
+            <button
+              onClick={captureAndIdentify}
+              disabled={cameraState === 'identifying' || !activeVisit}
+              style={{
+                width: '76px',
+                height: '76px',
+                borderRadius: '50%',
+                border: '4px solid #fff',
+                background: 'rgba(255,255,255,0.1)',
+                cursor: cameraState === 'identifying' ? 'wait' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: !activeVisit ? 0.5 : 1,
+              }}
+            >
+              <div style={{
+                width: '58px',
+                height: '58px',
+                borderRadius: '50%',
+                background: '#fff',
+              }} />
+            </button>
+
+            <button style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '14px',
+              border: 'none',
+              background: 'rgba(255,255,255,0.15)',
+              fontSize: '22px',
+              cursor: 'pointer',
+            }}>
+              🔄
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
-  // Camera view
-  return (
-    <div className="min-h-screen bg-black flex flex-col">
-      {/* Hidden canvas for capture */}
-      <canvas ref={canvasRef} className="hidden" />
-
-      {/* Video feed */}
-      <div className="flex-1 relative">
-        {error ? (
-          <div className="absolute inset-0 flex items-center justify-center p-8 text-center">
-            <div>
-              <div className="text-5xl mb-4">📷</div>
-              <p className="text-white/80 mb-4">{error}</p>
-              <button
-                onClick={startCamera}
-                className="px-6 py-3 bg-white/20 rounded-full text-white font-semibold"
-              >
-                Try Again
-              </button>
-            </div>
+  // Result view
+  if (cameraState === 'result' && result) {
+    return (
+      <div style={{
+        height: '100vh',
+        background: '#1a1a1a',
+        position: 'relative',
+      }}>
+        {/* Photo background */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: `
+            linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.95) 80%),
+            linear-gradient(135deg, #C9A66B 0%, #8B7355 50%, #5A4A2F 100%)
+          `,
+        }}>
+          <div style={{
+            position: 'absolute',
+            top: '22%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            fontSize: '150px',
+            opacity: 0.25,
+          }}>
+            {categoryIcons[result.animal.category]}
           </div>
-        ) : (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover"
-          />
-        )}
-
-        {/* Viewfinder overlay */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute inset-16 border-2 border-white/30 rounded-3xl" />
         </div>
 
-        {/* Instructions */}
-        {!identifying && (
-          <div className="absolute bottom-32 left-0 right-0 text-center text-white/80 text-sm">
-            Point at an animal and tap
+        {/* Success badge */}
+        <div style={{
+          position: 'absolute',
+          top: '60px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '12px 20px',
+            background: colors.forest,
+            borderRadius: '14px',
+            boxShadow: '0 8px 24px rgba(45, 90, 61, 0.4)',
+          }}>
+            <span style={{ fontSize: '18px' }}>✨</span>
+            <span style={{
+              fontSize: '15px',
+              fontWeight: '700',
+              color: '#fff',
+            }}>
+              Animal Identified!
+            </span>
           </div>
-        )}
+        </div>
 
-        {/* Identifying overlay */}
-        {identifying && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin text-5xl mb-4">🔍</div>
-              <p className="text-white font-semibold">Identifying...</p>
+        {/* Result card */}
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: colors.cream,
+          borderRadius: '28px 28px 0 0',
+          padding: '28px 24px 40px',
+        }}>
+          {/* Animal info */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            marginBottom: '20px',
+          }}>
+            <div style={{
+              width: '68px',
+              height: '68px',
+              background: `linear-gradient(135deg, ${colors.gold}30 0%, ${colors.terracotta}20 100%)`,
+              borderRadius: '18px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '36px',
+            }}>
+              {categoryIcons[result.animal.category]}
+            </div>
+            <div>
+              <h2 style={{
+                margin: 0,
+                fontSize: '24px',
+                fontWeight: '700',
+                color: colors.text,
+              }}>{result.animal.commonName}</h2>
+              <p style={{
+                margin: '4px 0 0',
+                fontSize: '14px',
+                color: colors.textMuted,
+                fontStyle: 'italic',
+              }}>{result.animal.scientificName}</p>
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Header */}
-      <header className="absolute top-0 left-0 right-0 p-4 flex justify-between z-10">
-        <button
-          onClick={() => {
-            stopCamera();
-            navigate(-1);
-          }}
-          className="w-11 h-11 rounded-full bg-white/15 backdrop-blur-md
-                     flex items-center justify-center text-white text-2xl"
-        >
-          ×
-        </button>
-        <button
-          onClick={() => {
-            // Toggle camera facing mode (future)
-          }}
-          className="w-11 h-11 rounded-full bg-white/15 backdrop-blur-md
-                     flex items-center justify-center text-white text-xl"
-        >
-          🔄
-        </button>
-      </header>
+          {/* Tags */}
+          <div style={{
+            display: 'flex',
+            gap: '8px',
+            flexWrap: 'wrap',
+            marginBottom: '20px',
+          }}>
+            <div style={{
+              padding: '8px 14px',
+              background: `${colors.forest}15`,
+              borderRadius: '10px',
+              color: colors.forest,
+              fontSize: '13px',
+              fontWeight: '600',
+            }}>
+              {result.confidence}% match
+            </div>
+            <div style={{
+              padding: '8px 14px',
+              background: colors.warmGray,
+              borderRadius: '10px',
+              color: colors.textMuted,
+              fontSize: '13px',
+              fontWeight: '600',
+            }}>
+              {categoryIcons[result.animal.category]} {result.animal.category}
+            </div>
+            {result.isFirstSighting && (
+              <div style={{
+                padding: '8px 14px',
+                background: `${colors.gold}20`,
+                borderRadius: '10px',
+                color: colors.terracotta,
+                fontSize: '13px',
+                fontWeight: '600',
+              }}>
+                ⭐ First sighting!
+              </div>
+            )}
+          </div>
 
-      {/* Capture button */}
-      <div className="absolute bottom-8 left-0 right-0 flex justify-center z-10">
-        <button
-          onClick={capturePhoto}
-          disabled={!stream || capturing || identifying}
-          className="w-20 h-20 rounded-full bg-white flex items-center justify-center
-                     shadow-lg disabled:opacity-50 transition-transform active:scale-95"
-        >
-          <div className="w-16 h-16 rounded-full bg-white border-4 border-terracotta" />
-        </button>
+          {/* Fun fact */}
+          {result.funFact && (
+            <div style={{
+              padding: '16px',
+              background: '#fff',
+              borderRadius: '14px',
+              borderLeft: `4px solid ${colors.gold}`,
+              marginBottom: '24px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            }}>
+              <p style={{
+                margin: '0 0 6px',
+                fontSize: '12px',
+                fontWeight: '700',
+                color: colors.gold,
+                letterSpacing: '0.5px',
+              }}>
+                DID YOU KNOW?
+              </p>
+              <p style={{
+                margin: 0,
+                fontSize: '14px',
+                color: colors.text,
+                lineHeight: '1.5',
+              }}>
+                {result.funFact}
+              </p>
+            </div>
+          )}
+
+          {/* Actions */}
+          <button
+            onClick={handleAddToCollection}
+            style={{
+              width: '100%',
+              padding: '16px',
+              borderRadius: '14px',
+              border: 'none',
+              background: colors.forest,
+              color: '#fff',
+              fontSize: '16px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              marginBottom: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+            }}
+          >
+            Add to Collection ✓
+          </button>
+          <button
+            onClick={handleTryAgain}
+            style={{
+              width: '100%',
+              padding: '14px',
+              borderRadius: '12px',
+              border: `2px solid ${colors.sand}`,
+              background: 'transparent',
+              color: colors.textMuted,
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+            }}
+          >
+            Not right? Try again
+          </button>
+        </div>
       </div>
+    );
+  }
+
+  // Error view
+  return (
+    <div style={{
+      height: '100vh',
+      background: colors.cream,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '24px',
+    }}>
+      <span style={{ fontSize: '64px', marginBottom: '16px' }}>😕</span>
+      <h2 style={{ margin: '0 0 8px', fontSize: '20px', fontWeight: '700', color: colors.text }}>
+        Oops!
+      </h2>
+      <p style={{ margin: '0 0 24px', fontSize: '14px', color: colors.textMuted, textAlign: 'center' }}>
+        {errorMessage || 'Something went wrong'}
+      </p>
+      <button
+        onClick={handleTryAgain}
+        style={{
+          padding: '14px 32px',
+          borderRadius: '12px',
+          border: 'none',
+          background: colors.forest,
+          color: '#fff',
+          fontSize: '16px',
+          fontWeight: '700',
+          cursor: 'pointer',
+        }}
+      >
+        Try Again
+      </button>
+      <BottomNav active="spot" />
     </div>
   );
 }

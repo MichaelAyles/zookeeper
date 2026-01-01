@@ -9,6 +9,7 @@ import ZooSelect from './pages/ZooSelect';
 import Visit from './pages/Visit';
 import Camera from './pages/Camera';
 import Stats from './pages/Stats';
+import Settings from './pages/Settings';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,6 +39,7 @@ function AppRoutes() {
       <Route path="/visit/:visitId" element={<Visit />} />
       <Route path="/camera" element={<Camera />} />
       <Route path="/stats" element={<Stats />} />
+      <Route path="/settings" element={<Settings />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
