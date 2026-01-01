@@ -114,12 +114,13 @@ export interface User {
 
 export async function getCurrentUser(
   request: Request,
-  env: { JWT_SECRET: string; DB: D1Database }
+  env: { JWT_SECRET?: string; DB: D1Database }
 ): Promise<User | null> {
   const token = getAuthToken(request);
   if (!token) return null;
 
-  const payload = await verifyJWT(token, env.JWT_SECRET);
+  const secret = env.JWT_SECRET || 'demo-secret-not-for-production';
+  const payload = await verifyJWT(token, secret);
   if (!payload) return null;
 
   const result = await env.DB.prepare(
