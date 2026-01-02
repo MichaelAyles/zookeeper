@@ -24,7 +24,7 @@ export default function Home() {
   const [progress, setProgress] = useState({ seen: 0, total: 0 });
   const [showMenu, setShowMenu] = useState(false);
   const [recentSightings, setRecentSightings] = useState<Array<{
-    sighting: { id: string; seenAt: string };
+    sighting: { id: string; seenAt: string; photoUrl?: string | null };
     animal: { commonName: string; category: AnimalCategory };
     zooName: string;
   }>>([]);
@@ -396,18 +396,31 @@ export default function Home() {
               marginBottom: '8px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
             }}>
-              <div style={{
-                width: '48px',
-                height: '48px',
-                background: isRecent(item.sighting.seenAt) ? `${colors.gold}20` : colors.warmGray,
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '24px',
-              }}>
-                {categoryIcons[item.animal.category]}
-              </div>
+              {item.sighting.photoUrl ? (
+                <img
+                  src={item.sighting.photoUrl}
+                  alt={item.animal.commonName}
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '12px',
+                    objectFit: 'cover',
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  background: isRecent(item.sighting.seenAt) ? `${colors.gold}20` : colors.warmGray,
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '24px',
+                }}>
+                  {categoryIcons[item.animal.category]}
+                </div>
+              )}
               <div style={{ flex: 1 }}>
                 <p style={{
                   margin: 0,
