@@ -12,6 +12,30 @@ interface ContextData {
   user: User;
 }
 
+// Parse fun_fact which can be a JSON array or a plain string
+// Returns a random fact from the array, or the string itself
+function getRandomFunFact(funFact: string | null): string | null {
+  if (!funFact) return null;
+
+  // Check if it's a JSON array
+  if (funFact.startsWith('[')) {
+    try {
+      const facts = JSON.parse(funFact) as string[];
+      if (Array.isArray(facts) && facts.length > 0) {
+        // Pick a random fact
+        const randomIndex = Math.floor(Math.random() * facts.length);
+        return facts[randomIndex];
+      }
+    } catch {
+      // Not valid JSON, return as-is
+      return funFact;
+    }
+  }
+
+  // Plain string, return as-is
+  return funFact;
+}
+
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   const { env, params } = context;
   const zooId = params.id as string;
@@ -33,7 +57,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     scientificName: animal.scientific_name,
     category: animal.category,
     exhibitArea: animal.exhibit_area,
-    funFact: animal.fun_fact,
+    funFact: getRandomFunFact(animal.fun_fact),
     imageUrl: animal.image_url,
     createdAt: animal.created_at,
   }));

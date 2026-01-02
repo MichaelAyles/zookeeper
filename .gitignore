@@ -71,3 +71,8 @@ workbox-*.js
 
 # Playwright
 .playwright-mcp/
+
+# Zoo scraper cache and test files
+uk-zoos-cache.json
+uk-zoos-test.json
+uk-zoos-full.json
