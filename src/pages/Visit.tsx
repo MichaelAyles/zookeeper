@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../stores/useStore';
-import { getVisitById } from '../services/visits';
+import { getVisitById, endVisit } from '../services/visits';
 import { getZooById } from '../services/zoos';
 import { getAnimalsByZoo } from '../services/animals';
 import { getSightingsByVisit, toggleSighting } from '../services/sightings';
@@ -68,6 +68,13 @@ export default function Visit() {
     );
   };
 
+  const handleEndVisit = async () => {
+    if (!visitId) return;
+    await endVisit(visitId);
+    setActiveVisit(null, null);
+    navigate('/');
+  };
+
   const categories: AnimalCategory[] = ['Mammals', 'Birds', 'Reptiles', 'Amphibians', 'Fish', 'Invertebrates'];
   const filterOptions: Array<{ label: string; value: AnimalCategory | 'all' }> = [
     { label: 'All', value: 'all' },
@@ -106,23 +113,44 @@ export default function Visit() {
 
   return (
     <div style={{
-      height: '100%',
-      minHeight: '100vh',
+      height: '100vh',
       background: colors.cream,
-      overflow: 'auto',
+      overflowX: 'hidden',
+      overflowY: 'auto',
       position: 'relative',
+      paddingBottom: '100px',
     }}>
       {/* Status bar spacer */}
       <div style={{ height: '24px' }} />
 
       {/* Header */}
       <div style={{ padding: '0 20px 16px' }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: '26px', fontWeight: '700', color: colors.text }}>
-          {zoo?.name || 'Collection'}
-        </h1>
-        <p style={{ margin: 0, fontSize: '14px', color: colors.textMuted }}>
-          {spottedCount} of {checklist.length} species spotted
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <h1 style={{ margin: '0 0 4px', fontSize: '26px', fontWeight: '700', color: colors.text }}>
+              {zoo?.name || 'Collection'}
+            </h1>
+            <p style={{ margin: 0, fontSize: '14px', color: colors.textMuted }}>
+              {spottedCount} of {checklist.length} species spotted
+            </p>
+          </div>
+          <button
+            onClick={handleEndVisit}
+            style={{
+              padding: '8px 14px',
+              borderRadius: '10px',
+              border: `2px solid ${colors.terracotta}`,
+              background: 'transparent',
+              color: colors.terracotta,
+              fontSize: '13px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            End Visit
+          </button>
+        </div>
       </div>
 
       {/* Filter tabs */}
@@ -157,7 +185,7 @@ export default function Visit() {
       </div>
 
       {/* Grid of animals */}
-      <div style={{ padding: '0 20px 100px' }}>
+      <div style={{ padding: '0 20px' }}>
         {Object.entries(groupedByCategory).map(([category, items]) => {
           const categorySpotted = items.filter(item => item.sighting).length;
           return (
@@ -185,7 +213,7 @@ export default function Visit() {
               {/* Animal grid */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
                 gap: '10px',
                 marginBottom: '28px',
               }}>
@@ -255,7 +283,7 @@ export default function Visit() {
         })}
       </div>
 
-      <BottomNav active="collection" />
+      <BottomNav active="visit" />
     </div>
   );
 }

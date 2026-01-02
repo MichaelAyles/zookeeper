@@ -105,21 +105,29 @@ body {
   min-height: 100dvh;
 }
 
-/* Pillarbox: constrain to mobile width on all screens */
+/* App container - full width on mobile, pillarboxed on desktop */
 #root {
-  max-width: 430px;
+  width: 100%;
   margin: 0 auto;
   min-height: 100vh;
   min-height: 100dvh;
   position: relative;
   background: var(--color-cream);
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
 }
 
-/* Dark background behind pillarbox on desktop */
-@media (min-width: 431px) {
+/* Pillarbox on desktop/tablet only */
+@media (min-width: 600px) {
   html {
     background: #1e2a24;
+  }
+
+  #root {
+    max-width: 430px;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
+  }
+
+  .bottom-nav-container {
+    max-width: 430px;
   }
 }
 

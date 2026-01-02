@@ -18,8 +18,26 @@ interface IdentifiedAnimal {
   isFirstSighting: boolean;
 }
 
-// Test image of a lion for test camera mode
-const TEST_IMAGE_URL = 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Lion_waiting_in_Namibia.jpg/1200px-Lion_waiting_in_Namibia.jpg';
+// Test images for test camera mode - mix of zoo animals, pets, objects, and colors
+const TEST_IMAGES = [
+  // Zoo animals (should be identified)
+  { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Lion_waiting_in_Namibia.jpg/800px-Lion_waiting_in_Namibia.jpg', label: 'Lion' },
+  { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/African_Bush_Elephant.jpg/800px-African_Bush_Elephant.jpg', label: 'Elephant' },
+  { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Giraffe_Mikumi_National_Park.jpg/800px-Giraffe_Mikumi_National_Park.jpg', label: 'Giraffe' },
+  { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/GoldenGateZoo-zebras.jpg/800px-GoldenGateZoo-zebras.jpg', label: 'Zebra' },
+  { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Polar_Bear_-_Alaska_%28cropped%29.jpg/800px-Polar_Bear_-_Alaska_%28cropped%29.jpg', label: 'Polar Bear' },
+  // Non-zoo animals (should fail to match zoo list)
+  { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/YellowLabradorLooking_new.jpg/800px-YellowLabradorLooking_new.jpg', label: 'Dog (Labrador)' },
+  { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/800px-Cat03.jpg', label: 'House Cat' },
+  { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Felis_catus-cat_on_snow.jpg/800px-Felis_catus-cat_on_snow.jpg', label: 'Cat in Snow' },
+  // Objects (should fail to identify as animal)
+  { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Camponotus_flavomarginatus_ant.jpg/800px-Camponotus_flavomarginatus_ant.jpg', label: 'Ant (tiny)' },
+  { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Good_Food_Display_-_NCI_Visuals_Online.jpg/800px-Good_Food_Display_-_NCI_Visuals_Online.jpg', label: 'Food' },
+  // Solid colors (should fail completely)
+  { url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect fill="#2D5A3D" width="800" height="600"/></svg>'), label: 'Green' },
+  { url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect fill="#D4654A" width="800" height="600"/></svg>'), label: 'Orange' },
+  { url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect fill="#1a1a1a" width="800" height="600"/></svg>'), label: 'Black' },
+];
 
 export default function Camera() {
   const navigate = useNavigate();
@@ -37,6 +55,17 @@ export default function Camera() {
   const [testCameraEnabled] = useState(() =>
     localStorage.getItem('testCameraEnabled') === 'true'
   );
+  const [testImageIndex, setTestImageIndex] = useState(0);
+
+  const currentTestImage = TEST_IMAGES[testImageIndex];
+
+  const nextTestImage = () => {
+    setTestImageIndex((prev) => (prev + 1) % TEST_IMAGES.length);
+  };
+
+  const prevTestImage = () => {
+    setTestImageIndex((prev) => (prev - 1 + TEST_IMAGES.length) % TEST_IMAGES.length);
+  };
 
   useEffect(() => {
     if (!testCameraEnabled) {
@@ -189,9 +218,9 @@ export default function Camera() {
         {testCameraEnabled ? (
           <img
             ref={testImageRef}
-            src={TEST_IMAGE_URL}
+            src={currentTestImage.url}
             crossOrigin="anonymous"
-            alt="Test animal"
+            alt={currentTestImage.label}
             style={{
               position: 'absolute',
               inset: 0,
@@ -260,17 +289,59 @@ export default function Camera() {
               <span>📍</span> {activeZoo?.name || 'No Zoo'}
             </button>
             {testCameraEnabled && (
-              <span style={{
-                padding: '6px 12px',
-                borderRadius: '8px',
-                background: colors.terracotta,
-                color: '#fff',
-                fontSize: '11px',
-                fontWeight: '700',
-                textTransform: 'uppercase',
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
               }}>
-                Test Mode
-              </span>
+                <button
+                  onClick={prevTestImage}
+                  style={{
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: 'rgba(255,255,255,0.2)',
+                    color: '#fff',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  ◀
+                </button>
+                <span style={{
+                  padding: '6px 10px',
+                  borderRadius: '8px',
+                  background: colors.terracotta,
+                  color: '#fff',
+                  fontSize: '10px',
+                  fontWeight: '700',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {currentTestImage.label} ({testImageIndex + 1}/{TEST_IMAGES.length})
+                </span>
+                <button
+                  onClick={nextTestImage}
+                  style={{
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: 'rgba(255,255,255,0.2)',
+                    color: '#fff',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  ▶
+                </button>
+              </div>
             )}
           </div>
           <button style={{
@@ -724,7 +795,7 @@ export default function Camera() {
       >
         Try Again
       </button>
-      <BottomNav active="spot" />
+      <BottomNav active="camera" />
     </div>
   );
 }

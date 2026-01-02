@@ -189,7 +189,7 @@ export default function Stats() {
         </div>
       )}
 
-      <BottomNav active="profile" />
+      <BottomNav active="journal" />
     </div>
   );
 }

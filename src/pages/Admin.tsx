@@ -16,6 +16,11 @@ export default function Admin() {
   const [scraping, setScraping] = useState(false);
   const [message, setMessage] = useState('');
 
+  // Add zoo form state
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newZoo, setNewZoo] = useState({ name: '', city: '', country: '' });
+  const [addingZoo, setAddingZoo] = useState(false);
+
   // Redirect non-admins
   useEffect(() => {
     if (user && !user.isAdmin) {
@@ -74,6 +79,30 @@ export default function Admin() {
       console.error(err);
     } finally {
       setScraping(false);
+    }
+  };
+
+  const handleAddZoo = async () => {
+    if (!newZoo.name || !newZoo.country) {
+      setMessage('Name and country are required');
+      return;
+    }
+
+    setAddingZoo(true);
+    setMessage('');
+
+    try {
+      const created = await api.post<Zoo>('/api/zoos', newZoo);
+      setZoos(prev => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      setSelectedZoo(created);
+      setNewZoo({ name: '', city: '', country: '' });
+      setShowAddForm(false);
+      setMessage(`Added ${created.name}`);
+    } catch (err) {
+      setMessage('Failed to add zoo');
+      console.error(err);
+    } finally {
+      setAddingZoo(false);
     }
   };
 
@@ -138,29 +167,113 @@ export default function Admin() {
           {loading ? (
             <p style={{ color: colors.textMuted }}>Loading zoos...</p>
           ) : (
-            <select
-              value={selectedZoo?.id || ''}
-              onChange={(e) => {
-                const zoo = zoos.find(z => z.id === e.target.value);
-                setSelectedZoo(zoo || null);
-                setMessage('');
-              }}
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '10px',
-                border: `2px solid ${colors.sand}`,
-                fontSize: '16px',
-                background: '#fff',
-              }}
-            >
-              <option value="">-- Select a zoo --</option>
-              {zoos.map(zoo => (
-                <option key={zoo.id} value={zoo.id}>
-                  {zoo.name} ({zoo.country})
-                </option>
-              ))}
-            </select>
+            <>
+              <select
+                value={selectedZoo?.id || ''}
+                onChange={(e) => {
+                  const zoo = zoos.find(z => z.id === e.target.value);
+                  setSelectedZoo(zoo || null);
+                  setMessage('');
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  border: `2px solid ${colors.sand}`,
+                  fontSize: '16px',
+                  background: '#fff',
+                  marginBottom: '12px',
+                }}
+              >
+                <option value="">-- Select a zoo --</option>
+                {zoos.map(zoo => (
+                  <option key={zoo.id} value={zoo.id}>
+                    {zoo.name} ({zoo.country})
+                  </option>
+                ))}
+              </select>
+
+              <button
+                onClick={() => setShowAddForm(!showAddForm)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  border: `2px dashed ${colors.forest}`,
+                  background: 'transparent',
+                  color: colors.forest,
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                }}
+              >
+                {showAddForm ? '− Cancel' : '+ Add New Zoo'}
+              </button>
+
+              {showAddForm && (
+                <div style={{ marginTop: '16px' }}>
+                  <input
+                    type="text"
+                    placeholder="Zoo name *"
+                    value={newZoo.name}
+                    onChange={(e) => setNewZoo(prev => ({ ...prev, name: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: '10px',
+                      border: `2px solid ${colors.sand}`,
+                      fontSize: '16px',
+                      marginBottom: '8px',
+                    }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="City (optional)"
+                    value={newZoo.city}
+                    onChange={(e) => setNewZoo(prev => ({ ...prev, city: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: '10px',
+                      border: `2px solid ${colors.sand}`,
+                      fontSize: '16px',
+                      marginBottom: '8px',
+                    }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Country *"
+                    value={newZoo.country}
+                    onChange={(e) => setNewZoo(prev => ({ ...prev, country: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: '10px',
+                      border: `2px solid ${colors.sand}`,
+                      fontSize: '16px',
+                      marginBottom: '12px',
+                    }}
+                  />
+                  <button
+                    onClick={handleAddZoo}
+                    disabled={addingZoo}
+                    style={{
+                      width: '100%',
+                      padding: '14px',
+                      borderRadius: '12px',
+                      border: 'none',
+                      background: addingZoo ? colors.sand : colors.forest,
+                      color: '#fff',
+                      fontSize: '15px',
+                      fontWeight: '700',
+                      cursor: addingZoo ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {addingZoo ? 'Adding...' : 'Add Zoo'}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
 
