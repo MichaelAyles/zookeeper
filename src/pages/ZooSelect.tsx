@@ -75,25 +75,24 @@ function formatDistance(km: number): string {
   }
 }
 
-// Component to fit map bounds to markers
-function FitBounds({ zoos, userLocation }: { zoos: Zoo[]; userLocation: UserLocation | null }) {
+// Component to handle map view - zoom to user location or fit all zoos
+function MapController({ zoos, userLocation }: { zoos: Zoo[]; userLocation: UserLocation | null }) {
   const map = useMap();
 
   useEffect(() => {
-    if (zoos.length === 0) return;
-
-    const validZoos = zoos.filter(z => z.latitude && z.longitude);
-    if (validZoos.length === 0) return;
-
-    const bounds = L.latLngBounds(
-      validZoos.map(z => [z.latitude!, z.longitude!] as [number, number])
-    );
-
     if (userLocation) {
-      bounds.extend([userLocation.latitude, userLocation.longitude]);
-    }
+      // Zoom to user location with ~15 mile radius (zoom 10 ≈ 20mi radius at UK latitude)
+      map.setView([userLocation.latitude, userLocation.longitude], 10);
+    } else {
+      // No user location - fit all zoos in view
+      const validZoos = zoos.filter(z => z.latitude && z.longitude);
+      if (validZoos.length === 0) return;
 
-    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 10 });
+      const bounds = L.latLngBounds(
+        validZoos.map(z => [z.latitude!, z.longitude!] as [number, number])
+      );
+      map.fitBounds(bounds, { padding: [30, 30], maxZoom: 10 });
+    }
   }, [map, zoos, userLocation]);
 
   return null;
@@ -249,7 +248,7 @@ export default function ZooSelect() {
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
 
-              <FitBounds zoos={sortedZoos} userLocation={userLocation} />
+              <MapController zoos={sortedZoos} userLocation={userLocation} />
 
               {/* User location marker */}
               {userLocation && (
