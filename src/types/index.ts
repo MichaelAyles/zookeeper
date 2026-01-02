@@ -114,6 +114,8 @@ export interface IdentificationResult {
   animal: string | null;
   confidence: number;
   funFact?: string;
+  failMessage?: string;
+  failEmoji?: string;
 }
 
 // ============================================

@@ -251,11 +251,33 @@ export default function Visit() {
                           height: '8px',
                           borderRadius: '50%',
                           background: colors.gold,
+                          zIndex: 1,
                         }} />
                       )}
-                      <span style={{ fontSize: '32px', marginBottom: '4px' }}>
-                        {categoryIcons[item.animal.category]}
-                      </span>
+                      {item.sighting?.photoUrl ? (
+                        <div style={{
+                          width: '48px',
+                          height: '48px',
+                          borderRadius: '12px',
+                          overflow: 'hidden',
+                          marginBottom: '4px',
+                          border: `2px solid ${colors.forest}`,
+                        }}>
+                          <img
+                            src={item.sighting.photoUrl}
+                            alt={item.animal.commonName}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '32px', marginBottom: '4px' }}>
+                          {categoryIcons[item.animal.category]}
+                        </span>
+                      )}
                       <span style={{
                         fontSize: '11px',
                         fontWeight: '600',

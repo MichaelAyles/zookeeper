@@ -21,6 +21,8 @@ interface IdentificationResult {
   animal: string | null;
   confidence: number;
   funFact?: string;
+  failMessage?: string;
+  failEmoji?: string;
 }
 
 export const onRequestPost: PagesFunction<Env, string, ContextData> = async (context) => {
@@ -43,18 +45,34 @@ export const onRequestPost: PagesFunction<Env, string, ContextData> = async (con
       ? body.imageData
       : `data:image/jpeg;base64,${body.imageData}`;
 
-    const prompt = `Identify the animal in this photo. It should be one of these animals from the zoo: ${body.candidateAnimals.join(', ')}.
+    const prompt = `You're helping identify animals at a zoo. The zoo has these animals: ${body.candidateAnimals.join(', ')}.
 
-Return ONLY valid JSON in this exact format:
+Look at this photo and determine what's in it.
+
+Return ONLY valid JSON in one of these formats:
+
+IF it's a zoo animal from the list above:
 {"animal": "Animal Name", "confidence": 0.95, "funFact": "One interesting fact about this animal"}
 
-Rules:
-- "animal" must exactly match one of the names provided above
-- "confidence" must be a number between 0 and 1
-- "funFact" should be a short, interesting fact about the identified animal
+IF it's NOT a zoo animal, generate a fun, friendly message based on what you see:
+{"animal": null, "confidence": 0, "failEmoji": "emoji", "failMessage": "Your witty message here"}
 
-If you cannot identify the animal or it's not in the list, return:
-{"animal": null, "confidence": 0}`;
+Examples of fun fail messages:
+- People: {"animal": null, "confidence": 0, "failEmoji": "👨‍🔬", "failMessage": "Looks like some trainee zookeepers! They're doing a great job, but they're not on the animal checklist."}
+- Dog: {"animal": null, "confidence": 0, "failEmoji": "🐕", "failMessage": "What a cute pup! But I don't think you're at the zoo right now... unless it's a very unusual zoo!"}
+- Cat: {"animal": null, "confidence": 0, "failEmoji": "🐱", "failMessage": "Aww, adorable kitty! Sadly house cats aren't on today's zoo scavenger hunt."}
+- Toy/stuffed animal: {"animal": null, "confidence": 0, "failEmoji": "🧸", "failMessage": "Nice try! That's a cuddly toy, not the real deal. Go find the living, breathing version!"}
+- Food: {"animal": null, "confidence": 0, "failEmoji": "🍔", "failMessage": "Getting hungry? That's not an animal... although the zoo café is pretty good!"}
+- Random object: {"animal": null, "confidence": 0, "failEmoji": "🤔", "failMessage": "Hmm, I'm not sure what I'm looking at, but it's definitely not a zoo animal!"}
+- Solid color/nothing: {"animal": null, "confidence": 0, "failEmoji": "📷", "failMessage": "I can't see much here. Try pointing the camera at an animal!"}
+
+Be creative and playful with your fail messages! Keep them short, friendly, and fun.
+
+Rules:
+- "animal" must EXACTLY match one of the zoo animal names, or be null
+- "confidence" must be 0-1
+- "funFact" should be a short, interesting fact (only for successful matches)
+- "failMessage" should be playful and encouraging (only for non-matches)`;
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -121,8 +139,13 @@ If you cannot identify the animal or it's not in the list, return:
         if (fuzzyMatch) {
           identification.animal = fuzzyMatch;
         } else {
+          // Not a zoo animal - generate a generic fail message if LLM didn't provide one
           identification.animal = null;
           identification.confidence = 0;
+          if (!identification.failMessage) {
+            identification.failEmoji = '🤔';
+            identification.failMessage = "I spotted something, but it's not one of the animals at this zoo!";
+          }
         }
       } else {
         identification.animal = matchedAnimal;

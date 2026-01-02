@@ -9,13 +9,18 @@ import { colors } from '../lib/colors';
 import type { ZooAnimal } from '../types';
 import BottomNav from '../components/BottomNav';
 
-type CameraState = 'scanning' | 'identifying' | 'result' | 'error';
+type CameraState = 'scanning' | 'identifying' | 'result' | 'error' | 'funFail';
 
 interface IdentifiedAnimal {
   animal: ZooAnimal;
   confidence: number;
   funFact?: string;
   isFirstSighting: boolean;
+}
+
+interface FunFail {
+  emoji: string;
+  message: string;
 }
 
 // Test images for test camera mode - mix of zoo animals, pets, objects, and colors
@@ -49,6 +54,7 @@ export default function Camera() {
 
   const [cameraState, setCameraState] = useState<CameraState>('scanning');
   const [result, setResult] = useState<IdentifiedAnimal | null>(null);
+  const [funFail, setFunFail] = useState<FunFail | null>(null);
   const [animals, setAnimals] = useState<ZooAnimal[]>([]);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
@@ -156,8 +162,17 @@ export default function Camera() {
       const identification = await identifyAnimal(imageData, animals);
 
       if (!identification.animal) {
-        setErrorMessage('Could not identify any animal in the image. Please try again.');
-        setCameraState('error');
+        // Check for fun fail message from AI
+        if (identification.failMessage) {
+          setFunFail({
+            emoji: identification.failEmoji || '🤔',
+            message: identification.failMessage,
+          });
+          setCameraState('funFail');
+        } else {
+          setErrorMessage('Could not identify any animal in the image. Please try again.');
+          setCameraState('error');
+        }
         return;
       }
 
@@ -201,6 +216,7 @@ export default function Camera() {
 
   function handleTryAgain() {
     setResult(null);
+    setFunFail(null);
     setErrorMessage('');
     setCapturedImage(null);
     setCameraState('scanning');
@@ -758,6 +774,83 @@ export default function Camera() {
             Not right? Try again
           </button>
         </div>
+      </div>
+    );
+  }
+
+  // Fun fail view (non-zoo animal detected)
+  if (cameraState === 'funFail' && funFail) {
+    return (
+      <div style={{
+        height: '100vh',
+        background: colors.cream,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px',
+        textAlign: 'center',
+      }}>
+        {/* Captured image thumbnail */}
+        {capturedImage && (
+          <div style={{
+            width: '120px',
+            height: '120px',
+            borderRadius: '20px',
+            overflow: 'hidden',
+            marginBottom: '20px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+            border: `3px solid ${colors.sand}`,
+          }}>
+            <img
+              src={capturedImage}
+              alt="Captured"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+              }}
+            />
+          </div>
+        )}
+
+        <span style={{ fontSize: '72px', marginBottom: '16px' }}>{funFail.emoji}</span>
+        <h2 style={{
+          margin: '0 0 12px',
+          fontSize: '22px',
+          fontWeight: '700',
+          color: colors.text,
+        }}>
+          Not Quite!
+        </h2>
+        <p style={{
+          margin: '0 0 32px',
+          fontSize: '16px',
+          color: colors.textMuted,
+          lineHeight: '1.6',
+          maxWidth: '300px',
+        }}>
+          {funFail.message}
+        </p>
+        <button
+          onClick={handleTryAgain}
+          style={{
+            padding: '16px 40px',
+            borderRadius: '14px',
+            border: 'none',
+            background: colors.forest,
+            color: '#fff',
+            fontSize: '16px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          📷 Try Again
+        </button>
+        <BottomNav active="camera" />
       </div>
     );
   }
