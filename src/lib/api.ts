@@ -24,8 +24,7 @@ export async function fetchApi<T>(
   });
 
   if (res.status === 401) {
-    // Not authenticated - redirect to login
-    window.location.href = '/api/auth/google';
+    // Not authenticated - let the caller handle it
     throw new ApiError('Unauthorized', 401);
   }
 
