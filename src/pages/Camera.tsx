@@ -62,8 +62,10 @@ export default function Camera() {
     localStorage.getItem('testCameraEnabled') === 'true'
   );
   const [testImageIndex, setTestImageIndex] = useState(0);
+  const [zoom, setZoom] = useState(1);
 
   const currentTestImage = TEST_IMAGES[testImageIndex];
+  const spottedCount = animals.length > 0 ? Math.floor(animals.length * 0.3) : 0; // Placeholder until we load real data
 
   const nextTestImage = () => {
     setTestImageIndex((prev) => (prev + 1) % TEST_IMAGES.length);
@@ -228,98 +230,120 @@ export default function Camera() {
       <div style={{
         height: '100vh',
         position: 'relative',
-        background: '#1a1a1a',
+        background: colors.forest,
+        overflow: 'hidden',
       }}>
-        {/* Video feed or test image */}
-        {testCameraEnabled ? (
-          <img
-            ref={testImageRef}
-            src={currentTestImage.url}
-            crossOrigin="anonymous"
-            alt={currentTestImage.label}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-            }}
-          />
-        ) : (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-            }}
-          />
-        )}
-        <canvas ref={canvasRef} style={{ display: 'none' }} />
-
-        {/* Overlay gradient */}
+        {/* Camera viewport with zoom */}
         <div style={{
           position: 'absolute',
           inset: 0,
-          background: `
-            linear-gradient(180deg, rgba(45, 90, 61, 0.3) 0%, rgba(107, 142, 107, 0.2) 50%, rgba(139, 115, 85, 0.3) 100%)
-          `,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+        }}>
+          {testCameraEnabled ? (
+            <img
+              ref={testImageRef}
+              src={currentTestImage.url}
+              crossOrigin="anonymous"
+              alt={currentTestImage.label}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                transform: `scale(${zoom})`,
+                transition: 'transform 0.1s ease-out',
+              }}
+            />
+          ) : (
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                transform: `scale(${zoom})`,
+                transition: 'transform 0.1s ease-out',
+              }}
+            />
+          )}
+        </div>
+        <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+        {/* Subtle vignette overlay */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'radial-gradient(circle at center, transparent 40%, rgba(0,0,0,0.4) 100%)',
           pointerEvents: 'none',
         }} />
 
-        {/* Top bar */}
+        {/* Top bar - glassmorphism */}
         <div style={{
           position: 'absolute',
           top: 0,
           left: 0,
           right: 0,
-          padding: '56px 20px 16px',
-          background: 'linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+          padding: '52px 16px 12px',
+          background: 'linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 100%)',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}>
+            {/* Zoo badge */}
             <button
               onClick={() => navigate('/')}
               style={{
-                padding: '10px 16px',
-                borderRadius: '12px',
+                padding: '8px 14px',
+                borderRadius: '20px',
                 border: 'none',
-                background: 'rgba(255,255,255,0.15)',
-                backdropFilter: 'blur(10px)',
+                background: 'rgba(255,255,255,0.2)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
                 color: '#fff',
-                fontSize: '14px',
+                fontSize: '13px',
                 fontWeight: '600',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
                 cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
               }}
             >
-              <span>📍</span> {activeZoo?.name || 'No Zoo'}
+              <span style={{ fontSize: '14px' }}>📍</span>
+              <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {activeZoo?.name || 'Select Zoo'}
+              </span>
             </button>
+
+            {/* Test mode controls */}
             {testCameraEnabled && (
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
+                gap: '6px',
+                background: 'rgba(0,0,0,0.4)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                borderRadius: '20px',
+                padding: '4px',
               }}>
                 <button
                   onClick={prevTestImage}
                   style={{
                     width: '28px',
                     height: '28px',
-                    borderRadius: '6px',
+                    borderRadius: '50%',
                     border: 'none',
                     background: 'rgba(255,255,255,0.2)',
                     color: '#fff',
-                    fontSize: '14px',
+                    fontSize: '12px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -329,26 +353,24 @@ export default function Camera() {
                   ◀
                 </button>
                 <span style={{
-                  padding: '6px 10px',
-                  borderRadius: '8px',
-                  background: colors.terracotta,
+                  padding: '4px 8px',
                   color: '#fff',
-                  fontSize: '10px',
-                  fontWeight: '700',
+                  fontSize: '11px',
+                  fontWeight: '600',
                   whiteSpace: 'nowrap',
                 }}>
-                  {currentTestImage.label} ({testImageIndex + 1}/{TEST_IMAGES.length})
+                  {testImageIndex + 1}/{TEST_IMAGES.length}
                 </span>
                 <button
                   onClick={nextTestImage}
                   style={{
                     width: '28px',
                     height: '28px',
-                    borderRadius: '6px',
+                    borderRadius: '50%',
                     border: 'none',
                     background: 'rgba(255,255,255,0.2)',
                     color: '#fff',
-                    fontSize: '14px',
+                    fontSize: '12px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -359,206 +381,314 @@ export default function Camera() {
                 </button>
               </div>
             )}
+
+            {/* Progress indicator */}
+            <div style={{
+              padding: '8px 14px',
+              borderRadius: '20px',
+              background: 'rgba(255,255,255,0.2)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              color: '#fff',
+              fontSize: '13px',
+              fontWeight: '600',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+            }}>
+              🎯 {spottedCount}/{animals.length}
+            </div>
           </div>
-          <button style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '12px',
-            border: 'none',
-            background: 'rgba(255,255,255,0.15)',
-            backdropFilter: 'blur(10px)',
-            fontSize: '18px',
-            cursor: 'pointer',
-          }}>
-            ⚡
-          </button>
+
+          {/* Test mode label */}
+          {testCameraEnabled && (
+            <div style={{
+              marginTop: '10px',
+              textAlign: 'center',
+            }}>
+              <span style={{
+                padding: '4px 12px',
+                borderRadius: '12px',
+                background: colors.terracotta,
+                color: '#fff',
+                fontSize: '11px',
+                fontWeight: '700',
+                letterSpacing: '0.5px',
+              }}>
+                TEST: {currentTestImage.label}
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Detection frame */}
+        {/* Center focus ring */}
         <div style={{
           position: 'absolute',
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
+          pointerEvents: 'none',
         }}>
           <div style={{
-            width: '200px',
-            height: '200px',
+            width: '220px',
+            height: '220px',
             position: 'relative',
           }}>
-            {/* Corners */}
+            {/* Animated ring */}
             <div style={{
               position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '32px',
-              height: '32px',
-              borderTop: `3px solid ${colors.gold}`,
-              borderLeft: `3px solid ${colors.gold}`,
-              borderRadius: '4px',
-            }} />
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              right: 0,
-              width: '32px',
-              height: '32px',
-              borderTop: `3px solid ${colors.gold}`,
-              borderRight: `3px solid ${colors.gold}`,
-              borderRadius: '4px',
-            }} />
-            <div style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              width: '32px',
-              height: '32px',
-              borderBottom: `3px solid ${colors.gold}`,
-              borderLeft: `3px solid ${colors.gold}`,
-              borderRadius: '4px',
-            }} />
-            <div style={{
-              position: 'absolute',
-              bottom: 0,
-              right: 0,
-              width: '32px',
-              height: '32px',
-              borderBottom: `3px solid ${colors.gold}`,
-              borderRight: `3px solid ${colors.gold}`,
-              borderRadius: '4px',
+              inset: 0,
+              borderRadius: '24px',
+              border: `2px solid ${cameraState === 'identifying' ? colors.gold : 'rgba(255,255,255,0.4)'}`,
+              boxShadow: cameraState === 'identifying'
+                ? `0 0 30px ${colors.gold}50, inset 0 0 30px ${colors.gold}20`
+                : '0 0 20px rgba(0,0,0,0.3)',
+              transition: 'all 0.3s ease',
             }} />
 
-            {/* Scanning indicator */}
+            {/* Corner accents */}
+            {[
+              { top: -2, left: -2, borderTop: true, borderLeft: true },
+              { top: -2, right: -2, borderTop: true, borderRight: true },
+              { bottom: -2, left: -2, borderBottom: true, borderLeft: true },
+              { bottom: -2, right: -2, borderBottom: true, borderRight: true },
+            ].map((corner, i) => (
+              <div
+                key={i}
+                style={{
+                  position: 'absolute',
+                  width: '40px',
+                  height: '40px',
+                  ...corner,
+                  borderTop: corner.borderTop ? `4px solid ${colors.gold}` : 'none',
+                  borderBottom: corner.borderBottom ? `4px solid ${colors.gold}` : 'none',
+                  borderLeft: corner.borderLeft ? `4px solid ${colors.gold}` : 'none',
+                  borderRight: corner.borderRight ? `4px solid ${colors.gold}` : 'none',
+                  borderRadius: '8px',
+                }}
+              />
+            ))}
+
+            {/* Status pill */}
             <div style={{
               position: 'absolute',
-              top: '50%',
+              bottom: '-50px',
               left: '50%',
-              transform: 'translate(-50%, -50%)',
-              textAlign: 'center',
+              transform: 'translateX(-50%)',
             }}>
               <div style={{
-                padding: '10px 18px',
-                background: 'rgba(0,0,0,0.6)',
-                backdropFilter: 'blur(10px)',
-                borderRadius: '12px',
+                padding: '10px 20px',
+                background: cameraState === 'identifying'
+                  ? colors.gold
+                  : 'rgba(0,0,0,0.6)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                borderRadius: '20px',
                 color: '#fff',
                 fontSize: '14px',
                 fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+                transition: 'all 0.3s ease',
               }}>
-                <span style={{ marginRight: '8px' }}>
-                  {cameraState === 'identifying' ? '⏳' : '🔍'}
-                </span>
-                {cameraState === 'identifying' ? 'Identifying...' : 'Point at animal'}
+                {cameraState === 'identifying' ? (
+                  <>
+                    <span style={{
+                      display: 'inline-block',
+                      animation: 'spin 1s linear infinite',
+                    }}>⏳</span>
+                    Identifying...
+                  </>
+                ) : (
+                  <>
+                    <span>🔍</span>
+                    Point at animal
+                  </>
+                )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom section */}
+        {/* Right side zoom slider */}
+        <div style={{
+          position: 'absolute',
+          right: '16px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '12px 8px',
+          background: 'rgba(0,0,0,0.4)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          borderRadius: '24px',
+        }}>
+          <span style={{ color: '#fff', fontSize: '12px', fontWeight: '600' }}>+</span>
+          <input
+            type="range"
+            min="1"
+            max="3"
+            step="0.1"
+            value={zoom}
+            onChange={(e) => setZoom(parseFloat(e.target.value))}
+            style={{
+              width: '100px',
+              height: '4px',
+              appearance: 'none',
+              background: 'rgba(255,255,255,0.3)',
+              borderRadius: '2px',
+              transform: 'rotate(-90deg)',
+              cursor: 'pointer',
+            }}
+          />
+          <span style={{ color: '#fff', fontSize: '12px', fontWeight: '600' }}>−</span>
+          <div style={{
+            marginTop: '4px',
+            padding: '4px 8px',
+            background: 'rgba(255,255,255,0.2)',
+            borderRadius: '8px',
+            color: '#fff',
+            fontSize: '11px',
+            fontWeight: '600',
+          }}>
+            {zoom.toFixed(1)}x
+          </div>
+        </div>
+
+        {/* Bottom controls */}
         <div style={{
           position: 'absolute',
           bottom: 0,
           left: 0,
           right: 0,
-          padding: '20px 20px 36px',
-          background: 'linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent 100%)',
+          padding: '24px 24px 40px',
+          background: 'linear-gradient(0deg, rgba(0,0,0,0.8) 0%, transparent 100%)',
         }}>
-          {/* Recent strip */}
-          <div style={{
-            display: 'flex',
-            gap: '10px',
-            marginBottom: '20px',
-            justifyContent: 'center',
-          }}>
-            {['🦒', '🐘', '🦓'].map((emoji, i) => (
-              <div key={i} style={{
-                width: '52px',
-                height: '52px',
-                borderRadius: '12px',
-                background: 'rgba(255,255,255,0.15)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '26px',
-              }}>
-                {emoji}
-              </div>
-            ))}
-            <div style={{
-              width: '52px',
-              height: '52px',
-              borderRadius: '12px',
-              background: 'rgba(255,255,255,0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'rgba(255,255,255,0.6)',
-              fontSize: '13px',
-              fontWeight: '600',
-            }}>
-              +30
-            </div>
-          </div>
-
-          {/* Shutter controls */}
+          {/* Shutter row */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 24px',
+            justifyContent: 'center',
+            gap: '32px',
           }}>
+            {/* Gallery/Back button */}
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate(activeVisit ? `/visit/${activeVisit.id}` : '/')}
               style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '14px',
-                border: 'none',
-                background: 'rgba(255,255,255,0.15)',
+                width: '52px',
+                height: '52px',
+                borderRadius: '16px',
+                border: '2px solid rgba(255,255,255,0.3)',
+                background: 'rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
                 fontSize: '22px',
                 cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
-              🏠
+              📋
             </button>
 
+            {/* Shutter button */}
             <button
               onClick={captureAndIdentify}
               disabled={cameraState === 'identifying' || !activeVisit}
               style={{
-                width: '76px',
-                height: '76px',
+                width: '80px',
+                height: '80px',
                 borderRadius: '50%',
-                border: '4px solid #fff',
-                background: 'rgba(255,255,255,0.1)',
+                border: 'none',
+                background: cameraState === 'identifying'
+                  ? colors.gold
+                  : '#fff',
                 cursor: cameraState === 'identifying' ? 'wait' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 opacity: !activeVisit ? 0.5 : 1,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.4), inset 0 -2px 8px rgba(0,0,0,0.1)',
+                transition: 'all 0.2s ease',
+                transform: cameraState === 'identifying' ? 'scale(0.95)' : 'scale(1)',
               }}
             >
               <div style={{
-                width: '58px',
-                height: '58px',
+                width: '64px',
+                height: '64px',
                 borderRadius: '50%',
-                background: '#fff',
-              }} />
+                border: `3px solid ${cameraState === 'identifying' ? '#fff' : colors.forest}`,
+                background: cameraState === 'identifying'
+                  ? 'transparent'
+                  : `linear-gradient(135deg, ${colors.forest} 0%, ${colors.forestLight} 100%)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                {cameraState === 'identifying' ? (
+                  <span style={{ fontSize: '28px' }}>⏳</span>
+                ) : (
+                  <span style={{ fontSize: '28px' }}>🦁</span>
+                )}
+              </div>
             </button>
 
-            <button style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '14px',
-              border: 'none',
-              background: 'rgba(255,255,255,0.15)',
-              fontSize: '22px',
-              cursor: 'pointer',
-            }}>
+            {/* Flip camera button */}
+            <button
+              onClick={() => setZoom(1)}
+              style={{
+                width: '52px',
+                height: '52px',
+                borderRadius: '16px',
+                border: '2px solid rgba(255,255,255,0.3)',
+                background: 'rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                fontSize: '22px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               🔄
             </button>
           </div>
+
+          {/* Help text */}
+          {!activeVisit && (
+            <p style={{
+              textAlign: 'center',
+              color: colors.terracotta,
+              fontSize: '13px',
+              fontWeight: '600',
+              marginTop: '16px',
+            }}>
+              Start a zoo visit to identify animals
+            </p>
+          )}
         </div>
+
+        {/* CSS for spinner animation */}
+        <style>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+          input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: ${colors.gold};
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          }
+        `}</style>
       </div>
     );
   }
@@ -571,25 +701,41 @@ export default function Camera() {
         background: '#1a1a1a',
         position: 'relative',
       }}>
-        {/* Photo background */}
+        {/* Photo background - show captured image */}
         <div style={{
           position: 'absolute',
           inset: 0,
-          background: `
-            linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.95) 80%),
-            linear-gradient(135deg, #C9A66B 0%, #8B7355 50%, #5A4A2F 100%)
-          `,
         }}>
+          {capturedImage ? (
+            <img
+              src={capturedImage}
+              alt="Captured"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+              }}
+            />
+          ) : (
+            <div style={{
+              width: '100%',
+              height: '100%',
+              background: `linear-gradient(135deg, #C9A66B 0%, #8B7355 50%, #5A4A2F 100%)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <span style={{ fontSize: '150px', opacity: 0.25 }}>
+                {categoryIcons[result.animal.category]}
+              </span>
+            </div>
+          )}
+          {/* Gradient overlay */}
           <div style={{
             position: 'absolute',
-            top: '22%',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            fontSize: '150px',
-            opacity: 0.25,
-          }}>
-            {categoryIcons[result.animal.category]}
-          </div>
+            inset: 0,
+            background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0.95) 75%)',
+          }} />
         </div>
 
         {/* Success badge */}
