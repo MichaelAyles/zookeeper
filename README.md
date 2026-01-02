@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/logo.png" alt="Zookeeper" width="300">
+</p>
+
 # Zookeeper
 
 > Turn every zoo visit into an interactive wildlife collection adventure

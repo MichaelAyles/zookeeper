@@ -18,24 +18,33 @@ interface IdentifiedAnimal {
   isFirstSighting: boolean;
 }
 
+// Test image of a lion for test camera mode
+const TEST_IMAGE_URL = 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Lion_waiting_in_Namibia.jpg/1200px-Lion_waiting_in_Namibia.jpg';
+
 export default function Camera() {
   const navigate = useNavigate();
   const { activeVisit, activeZoo } = useStore();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const testImageRef = useRef<HTMLImageElement>(null);
 
   const [cameraState, setCameraState] = useState<CameraState>('scanning');
   const [result, setResult] = useState<IdentifiedAnimal | null>(null);
   const [animals, setAnimals] = useState<ZooAnimal[]>([]);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [testCameraEnabled] = useState(() =>
+    localStorage.getItem('testCameraEnabled') === 'true'
+  );
 
   useEffect(() => {
-    startCamera();
+    if (!testCameraEnabled) {
+      startCamera();
+    }
     loadAnimals();
     return () => stopCamera();
-  }, []);
+  }, [testCameraEnabled]);
 
   async function loadAnimals() {
     if (!activeZoo) return;
@@ -66,11 +75,15 @@ export default function Camera() {
   }
 
   async function captureAndIdentify() {
-    if (!videoRef.current || !canvasRef.current || !activeVisit || !activeZoo) {
+    if (!activeVisit || !activeZoo) {
       if (!activeVisit) {
         setErrorMessage('Please start a zoo visit first');
         setCameraState('error');
       }
+      return;
+    }
+
+    if (!testCameraEnabled && (!videoRef.current || !canvasRef.current)) {
       return;
     }
 
@@ -82,15 +95,32 @@ export default function Camera() {
 
     setCameraState('identifying');
 
-    const canvas = canvasRef.current;
-    const video = videoRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    let imageData: string;
 
-    ctx.drawImage(video, 0, 0);
-    const imageData = canvas.toDataURL('image/jpeg', 0.8);
+    if (testCameraEnabled && testImageRef.current && canvasRef.current) {
+      // Use test image
+      const canvas = canvasRef.current;
+      const img = testImageRef.current;
+      canvas.width = img.naturalWidth || 800;
+      canvas.height = img.naturalHeight || 600;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0);
+      imageData = canvas.toDataURL('image/jpeg', 0.8);
+    } else if (videoRef.current && canvasRef.current) {
+      // Use live camera
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(video, 0, 0);
+      imageData = canvas.toDataURL('image/jpeg', 0.8);
+    } else {
+      return;
+    }
+
     setCapturedImage(imageData);
 
     try {
@@ -155,20 +185,36 @@ export default function Camera() {
         position: 'relative',
         background: '#1a1a1a',
       }}>
-        {/* Video feed */}
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-          }}
-        />
+        {/* Video feed or test image */}
+        {testCameraEnabled ? (
+          <img
+            ref={testImageRef}
+            src={TEST_IMAGE_URL}
+            crossOrigin="anonymous"
+            alt="Test animal"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+          />
+        ) : (
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+          />
+        )}
         <canvas ref={canvasRef} style={{ display: 'none' }} />
 
         {/* Overlay gradient */}
@@ -193,25 +239,40 @@ export default function Camera() {
           justifyContent: 'space-between',
           alignItems: 'center',
         }}>
-          <button
-            onClick={() => navigate('/')}
-            style={{
-              padding: '10px 16px',
-              borderRadius: '12px',
-              border: 'none',
-              background: 'rgba(255,255,255,0.15)',
-              backdropFilter: 'blur(10px)',
-              color: '#fff',
-              fontSize: '14px',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              cursor: 'pointer',
-            }}
-          >
-            <span>📍</span> {activeZoo?.name || 'No Zoo'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={() => navigate('/')}
+              style={{
+                padding: '10px 16px',
+                borderRadius: '12px',
+                border: 'none',
+                background: 'rgba(255,255,255,0.15)',
+                backdropFilter: 'blur(10px)',
+                color: '#fff',
+                fontSize: '14px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+              }}
+            >
+              <span>📍</span> {activeZoo?.name || 'No Zoo'}
+            </button>
+            {testCameraEnabled && (
+              <span style={{
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: colors.terracotta,
+                color: '#fff',
+                fontSize: '11px',
+                fontWeight: '700',
+                textTransform: 'uppercase',
+              }}>
+                Test Mode
+              </span>
+            )}
+          </div>
           <button style={{
             width: '40px',
             height: '40px',

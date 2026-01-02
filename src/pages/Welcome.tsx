@@ -16,33 +16,15 @@ export default function Welcome() {
       padding: '24px',
     }}>
       {/* Logo */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        marginBottom: '8px',
-      }}>
-        <div style={{
-          width: '44px',
-          height: '44px',
-          background: colors.forest,
-          borderRadius: '12px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '22px',
-        }}>
-          🦁
-        </div>
-        <h1 style={{
-          fontSize: '28px',
-          fontWeight: '700',
-          color: colors.text,
-          margin: 0,
-        }}>
-          Z<span style={{ color: colors.terracotta }}>oo</span>keeper
-        </h1>
-      </div>
+      <img
+        src="/logo.png"
+        alt="Zookeeper"
+        style={{
+          width: '200px',
+          height: 'auto',
+          marginBottom: '8px',
+        }}
+      />
 
       <p style={{
         fontSize: '14px',

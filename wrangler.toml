@@ -5,6 +5,7 @@ pages_build_output_dir = "dist"
 [vars]
 GOOGLE_CLIENT_ID = "272681506012-d787rj7g211goia7tm5d7g14c0c7jp21.apps.googleusercontent.com"
 GOOGLE_REDIRECT_URI = "https://zookeeperapp.com/api/auth/callback"
+ADMIN_EMAILS = "aylesm@gmail.com"
 
 # D1 Database - create with: wrangler d1 create zookeeper-db
 [[d1_databases]]

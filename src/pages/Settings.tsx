@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../stores/useStore';
 import { api } from '../lib/api';
@@ -9,6 +10,10 @@ export default function Settings() {
   const logout = useStore((state) => state.logout);
   const navigate = useNavigate();
 
+  const [testCameraEnabled, setTestCameraEnabled] = useState(() =>
+    localStorage.getItem('testCameraEnabled') === 'true'
+  );
+
   const handleLogout = async () => {
     try {
       await api.post('/api/auth/logout');
@@ -17,6 +22,12 @@ export default function Settings() {
     }
     logout();
     navigate('/');
+  };
+
+  const toggleTestCamera = () => {
+    const newValue = !testCameraEnabled;
+    setTestCameraEnabled(newValue);
+    localStorage.setItem('testCameraEnabled', String(newValue));
   };
 
   const firstInitial = user?.displayName?.charAt(0).toUpperCase() || 'U';
@@ -78,12 +89,25 @@ export default function Settings() {
             </div>
           )}
           <div>
-            <p style={{
-              margin: 0,
-              fontSize: '20px',
-              fontWeight: '700',
-              color: colors.text,
-            }}>{user?.displayName}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <p style={{
+                margin: 0,
+                fontSize: '20px',
+                fontWeight: '700',
+                color: colors.text,
+              }}>{user?.displayName}</p>
+              {user?.isAdmin && (
+                <span style={{
+                  padding: '2px 8px',
+                  background: colors.forest,
+                  color: '#fff',
+                  fontSize: '10px',
+                  fontWeight: '700',
+                  borderRadius: '4px',
+                  textTransform: 'uppercase',
+                }}>Admin</span>
+              )}
+            </div>
             <p style={{
               margin: '4px 0 0',
               fontSize: '14px',
@@ -92,6 +116,95 @@ export default function Settings() {
           </div>
         </div>
       </div>
+
+      {/* Admin Panel - Only show for admins */}
+      {user?.isAdmin && (
+        <div style={{ padding: '0 20px 24px' }}>
+          <h3 style={{
+            margin: '0 0 12px',
+            fontSize: '14px',
+            fontWeight: '700',
+            color: colors.textMuted,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+          }}>
+            Admin Tools
+          </h3>
+          <div style={{
+            background: '#fff',
+            borderRadius: '18px',
+            overflow: 'hidden',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            border: `2px solid ${colors.forest}20`,
+          }}>
+            <button
+              onClick={() => navigate('/admin')}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '14px',
+                padding: '16px 20px',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: `1px solid ${colors.sand}`,
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '22px' }}>🏛️</span>
+              <span style={{
+                flex: 1,
+                fontSize: '15px',
+                fontWeight: '600',
+                color: colors.text,
+              }}>Zoo Manager</span>
+              <span style={{ color: colors.textMuted }}>→</span>
+            </button>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '14px',
+                padding: '16px 20px',
+              }}
+            >
+              <span style={{ fontSize: '22px' }}>📷</span>
+              <span style={{
+                flex: 1,
+                fontSize: '15px',
+                fontWeight: '600',
+                color: colors.text,
+              }}>Test Camera Mode</span>
+              <button
+                onClick={toggleTestCamera}
+                style={{
+                  width: '50px',
+                  height: '28px',
+                  borderRadius: '14px',
+                  border: 'none',
+                  background: testCameraEnabled ? colors.forest : colors.sand,
+                  cursor: 'pointer',
+                  position: 'relative',
+                  transition: 'background 0.2s',
+                }}
+              >
+                <div style={{
+                  width: '22px',
+                  height: '22px',
+                  borderRadius: '50%',
+                  background: '#fff',
+                  position: 'absolute',
+                  top: '3px',
+                  left: testCameraEnabled ? '25px' : '3px',
+                  transition: 'left 0.2s',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                }} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Menu Items */}
       <div style={{ padding: '0 20px 24px' }}>

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/logo.png" alt="Zookeeper" width="300">
+</p>
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
