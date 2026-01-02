@@ -63,6 +63,8 @@ export default function Camera() {
   );
   const [testImageIndex, setTestImageIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
+  const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
+  const [showFocusRing, setShowFocusRing] = useState(false);
 
   const currentTestImage = TEST_IMAGES[testImageIndex];
   const spottedCount = animals.length > 0 ? Math.floor(animals.length * 0.3) : 0; // Placeholder until we load real data
@@ -109,6 +111,59 @@ export default function Camera() {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
     }
+  }
+
+  async function handleTapToFocus(e: React.MouseEvent | React.TouchEvent) {
+    const element = e.currentTarget as HTMLElement;
+    const rect = element.getBoundingClientRect();
+
+    // Get tap coordinates
+    let clientX: number, clientY: number;
+    if ('touches' in e) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    // Calculate position relative to element
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    // Show focus ring animation
+    setFocusPoint({ x, y });
+    setShowFocusRing(true);
+
+    // Try to set camera focus point (if supported)
+    if (streamRef.current) {
+      const track = streamRef.current.getVideoTracks()[0];
+      const capabilities = track.getCapabilities?.() as MediaTrackCapabilities & {
+        focusMode?: string[];
+      };
+
+      if (capabilities?.focusMode?.includes('manual') || capabilities?.focusMode?.includes('single-shot')) {
+        try {
+          // Calculate normalized coordinates (0-1)
+          const focusX = (clientX - rect.left) / rect.width;
+          const focusY = (clientY - rect.top) / rect.height;
+
+          await track.applyConstraints({
+            advanced: [{
+              // @ts-expect-error - focusMode and pointsOfInterest are valid but not in TS types
+              focusMode: 'single-shot',
+              pointsOfInterest: [{ x: focusX, y: focusY }],
+            }],
+          });
+        } catch (err) {
+          // Focus control not supported, just show visual feedback
+          console.log('Focus control not supported');
+        }
+      }
+    }
+
+    // Hide focus ring after animation
+    setTimeout(() => setShowFocusRing(false), 800);
   }
 
   async function captureAndIdentify() {
@@ -233,15 +288,20 @@ export default function Camera() {
         background: colors.forest,
         overflow: 'hidden',
       }}>
-        {/* Camera viewport with zoom */}
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
-        }}>
+        {/* Camera viewport with zoom - tap to focus */}
+        <div
+          onClick={handleTapToFocus}
+          onTouchStart={handleTapToFocus}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            cursor: 'crosshair',
+          }}
+        >
           {testCameraEnabled ? (
             <img
               ref={testImageRef}
@@ -254,6 +314,7 @@ export default function Camera() {
                 objectFit: 'cover',
                 transform: `scale(${zoom})`,
                 transition: 'transform 0.1s ease-out',
+                pointerEvents: 'none',
               }}
             />
           ) : (
@@ -268,8 +329,47 @@ export default function Camera() {
                 objectFit: 'cover',
                 transform: `scale(${zoom})`,
                 transition: 'transform 0.1s ease-out',
+                pointerEvents: 'none',
               }}
             />
+          )}
+
+          {/* Tap to focus indicator */}
+          {showFocusRing && focusPoint && (
+            <div
+              style={{
+                position: 'absolute',
+                left: focusPoint.x - 40,
+                top: focusPoint.y - 40,
+                width: '80px',
+                height: '80px',
+                pointerEvents: 'none',
+              }}
+            >
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  border: `2px solid ${colors.gold}`,
+                  borderRadius: '50%',
+                  animation: 'focusPulse 0.6s ease-out forwards',
+                  boxShadow: `0 0 20px ${colors.gold}80`,
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '8px',
+                  height: '8px',
+                  background: colors.gold,
+                  borderRadius: '50%',
+                  animation: 'focusDot 0.6s ease-out forwards',
+                }}
+              />
+            </div>
           )}
         </div>
         <canvas ref={canvasRef} style={{ display: 'none' }} />
@@ -673,11 +773,22 @@ export default function Camera() {
           )}
         </div>
 
-        {/* CSS for spinner animation */}
+        {/* CSS for animations */}
         <style>{`
           @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+          }
+          @keyframes focusPulse {
+            0% { transform: scale(1.5); opacity: 0; }
+            30% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0; }
+          }
+          @keyframes focusDot {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            30% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            60% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
           }
           input[type="range"]::-webkit-slider-thumb {
             appearance: none;
