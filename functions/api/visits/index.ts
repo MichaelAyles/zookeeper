@@ -46,18 +46,20 @@ export const onRequestPost: PagesFunction<Env, string, ContextData> = async (con
       return error('Zoo not found', 404);
     }
 
-    // End any active visits for this user
-    await env.DB.prepare(
-      'UPDATE visits SET ended_at = ? WHERE user_id = ? AND ended_at IS NULL'
-    ).bind(new Date().toISOString(), data.user.id).run();
-
-    // Create new visit
+    // Create new visit and end any active visits atomically using batch
     const id = generateId();
     const now = new Date().toISOString();
 
-    await env.DB.prepare(
-      'INSERT INTO visits (id, user_id, zoo_id, started_at) VALUES (?, ?, ?, ?)'
-    ).bind(id, data.user.id, body.zooId, now).run();
+    await env.DB.batch([
+      // End any active visits for this user
+      env.DB.prepare(
+        'UPDATE visits SET ended_at = ? WHERE user_id = ? AND ended_at IS NULL'
+      ).bind(now, data.user.id),
+      // Create new visit
+      env.DB.prepare(
+        'INSERT INTO visits (id, user_id, zoo_id, started_at) VALUES (?, ?, ?, ?)'
+      ).bind(id, data.user.id, body.zooId, now),
+    ]);
 
     return json({
       id,

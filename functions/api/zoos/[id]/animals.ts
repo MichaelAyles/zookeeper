@@ -62,7 +62,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     createdAt: animal.created_at,
   }));
 
-  return json(animals);
+  // Cache animal list for 10 minutes (animals rarely change)
+  return json(animals, { cacheMaxAge: 600 });
 };
 
 export const onRequestPost: PagesFunction<Env, string, ContextData> = async (context) => {

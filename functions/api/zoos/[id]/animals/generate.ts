@@ -6,6 +6,7 @@ import type { User } from '../../../../lib/auth';
 interface Env {
   DB: D1Database;
   OPENROUTER_API_KEY?: string;
+  ADMIN_EMAILS?: string;
 }
 
 interface ContextData {
@@ -25,7 +26,10 @@ export const onRequestPost: PagesFunction<Env, string, ContextData> = async (con
   const zooId = params.id as string;
 
   // Only admins can generate animals
-  // TODO: Add admin check here
+  const adminEmails = (env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase());
+  if (!adminEmails.includes(data.user.email.toLowerCase())) {
+    return error('Forbidden: Admin access required', 403);
+  }
 
   try {
     // Get zoo info
@@ -104,28 +108,44 @@ Include 30-60 animals depending on zoo size. Only include animals you're confide
       return error('No animals generated', 500);
     }
 
-    // Delete existing animals for this zoo (fresh generation)
-    await env.DB.prepare('DELETE FROM animals WHERE zoo_id = ?').bind(zooId).run();
-
-    // Insert all animals
-    const savedAnimals = [];
     const now = new Date().toISOString();
 
+    // Prepare batch statements for atomic operation
+    const batchStatements = [];
+
+    // First, nullify animal_id in sightings to preserve sighting records
+    // This prevents orphaned foreign key references
+    batchStatements.push(
+      env.DB.prepare(
+        `UPDATE sightings SET animal_id = NULL
+         WHERE animal_id IN (SELECT id FROM animals WHERE zoo_id = ?)`
+      ).bind(zooId)
+    );
+
+    // Delete existing animals for this zoo
+    batchStatements.push(
+      env.DB.prepare('DELETE FROM animals WHERE zoo_id = ?').bind(zooId)
+    );
+
+    // Prepare insert statements for all animals
+    const savedAnimals = [];
     for (const animal of animals) {
       const id = generateId();
-      await env.DB.prepare(
-        `INSERT INTO animals (id, zoo_id, common_name, scientific_name, category, exhibit_area, fun_fact, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(
-        id,
-        zooId,
-        animal.common_name,
-        animal.scientific_name || null,
-        animal.category,
-        animal.exhibit_area || null,
-        animal.fun_fact || null,
-        now
-      ).run();
+      batchStatements.push(
+        env.DB.prepare(
+          `INSERT INTO animals (id, zoo_id, common_name, scientific_name, category, exhibit_area, fun_fact, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          id,
+          zooId,
+          animal.common_name,
+          animal.scientific_name || null,
+          animal.category,
+          animal.exhibit_area || null,
+          animal.fun_fact || null,
+          now
+        )
+      );
 
       savedAnimals.push({
         id,
@@ -140,9 +160,14 @@ Include 30-60 animals depending on zoo size. Only include animals you're confide
     }
 
     // Update zoo's animalsGeneratedAt
-    await env.DB.prepare(
-      'UPDATE zoos SET animals_generated_at = ? WHERE id = ?'
-    ).bind(now, zooId).run();
+    batchStatements.push(
+      env.DB.prepare(
+        'UPDATE zoos SET animals_generated_at = ? WHERE id = ?'
+      ).bind(now, zooId)
+    );
+
+    // Execute all statements in a single batch for atomicity and performance
+    await env.DB.batch(batchStatements);
 
     return json({
       animals: savedAnimals,

@@ -20,17 +20,30 @@ export const onRequestGet: PagesFunction<Env, string, ContextData> = async (cont
   const userLat = lat ? parseFloat(lat) : null;
   const userLon = lon ? parseFloat(lon) : null;
 
+  // Pagination parameters (optional - defaults to all results for backward compatibility)
+  const page = parseInt(url.searchParams.get('page') || '1', 10);
+  const limit = parseInt(url.searchParams.get('limit') || '0', 10); // 0 means no limit
+  const offset = limit > 0 ? (page - 1) * limit : 0;
+
   // Get user's visited zoo IDs
   const visitedResult = await env.DB.prepare(
     'SELECT DISTINCT zoo_id FROM visits WHERE user_id = ?'
   ).bind(data.user.id).all<{ zoo_id: string }>();
   const visitedIds = new Set(visitedResult.results?.map((r) => r.zoo_id) || []);
 
-  // Get all zoos
-  const zoosResult = await env.DB.prepare('SELECT * FROM zoos').all<Zoo>();
+  // Get zoos (with optional pagination at DB level for efficiency)
+  let zoosResult;
+  if (limit > 0) {
+    zoosResult = await env.DB.prepare(
+      'SELECT * FROM zoos ORDER BY name LIMIT ? OFFSET ?'
+    ).bind(limit, offset).all<Zoo>();
+  } else {
+    zoosResult = await env.DB.prepare('SELECT * FROM zoos').all<Zoo>();
+  }
   const zoos = zoosResult.results || [];
 
   // Sort: nearby (top 3 within 100km) → visited → rest alphabetical
+  // Note: When using pagination, sorting happens on the current page only
   const sortedZoos = zoos.sort((a, b) => {
     let aDistance = Infinity;
     let bDistance = Infinity;
@@ -74,7 +87,8 @@ export const onRequestGet: PagesFunction<Env, string, ContextData> = async (cont
     isVisited: visitedIds.has(zoo.id),
   }));
 
-  return json(response);
+  // Cache zoo list for 5 minutes (zoos rarely change)
+  return json(response, { cacheMaxAge: 300 });
 };
 
 export const onRequestPost: PagesFunction<Env, string, ContextData> = async (context) => {

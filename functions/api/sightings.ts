@@ -95,15 +95,19 @@ export const onRequestPost: PagesFunction<Env, string, ContextData> = async (con
         'SELECT * FROM sightings WHERE id = ?'
       ).bind(existing.id).first<Sighting>();
 
+      if (!updated) {
+        return error('Sighting not found after update', 500);
+      }
+
       return json({
-        id: updated!.id,
-        visitId: updated!.visit_id,
-        animalId: updated!.animal_id,
-        seenAt: updated!.seen_at,
-        photoUrl: updated!.photo_url,
-        aiIdentified: updated!.ai_identified === 1,
-        aiConfidence: updated!.ai_confidence,
-        notes: updated!.notes,
+        id: updated.id,
+        visitId: updated.visit_id,
+        animalId: updated.animal_id,
+        seenAt: updated.seen_at,
+        photoUrl: updated.photo_url,
+        aiIdentified: updated.ai_identified === 1,
+        aiConfidence: updated.ai_confidence,
+        notes: updated.notes,
       });
     }
 

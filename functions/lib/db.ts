@@ -73,13 +73,27 @@ export interface Sighting {
 }
 
 // JSON response helpers
-export function json<T>(data: T, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
+export interface JsonOptions {
+  status?: number;
+  cacheMaxAge?: number; // Cache-Control max-age in seconds
+}
+
+export function json<T>(data: T, statusOrOptions: number | JsonOptions = 200): Response {
+  const options = typeof statusOrOptions === 'number'
+    ? { status: statusOrOptions }
+    : statusOrOptions;
+
+  const { status = 200, cacheMaxAge } = options;
+
+  const headers: HeadersInit = { 'Content-Type': 'application/json' };
+
+  if (cacheMaxAge && cacheMaxAge > 0) {
+    headers['Cache-Control'] = `public, max-age=${cacheMaxAge}`;
+  }
+
+  return new Response(JSON.stringify(data), { status, headers });
 }
 
 export function error(message: string, status = 400): Response {
-  return json({ error: message }, status);
+  return json({ error: message }, { status });
 }

@@ -119,8 +119,11 @@ export async function getCurrentUser(
   const token = getAuthToken(request);
   if (!token) return null;
 
-  const secret = env.JWT_SECRET || 'demo-secret-not-for-production';
-  const payload = await verifyJWT(token, secret);
+  if (!env.JWT_SECRET) {
+    console.error('JWT_SECRET environment variable is not set');
+    return null;
+  }
+  const payload = await verifyJWT(token, env.JWT_SECRET);
   if (!payload) return null;
 
   const result = await env.DB.prepare(

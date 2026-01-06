@@ -71,11 +71,3 @@ export const useStore = create<AppState>()((set) => ({
       error: null,
     }),
 }));
-
-// Legacy alias for backwards compatibility
-export const useProfile = () => {
-  const user = useStore((state) => state.user);
-  return user
-    ? { id: user.id, displayName: user.displayName, createdAt: user.createdAt }
-    : null;
-};

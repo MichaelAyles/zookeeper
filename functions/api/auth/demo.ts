@@ -52,8 +52,15 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       };
     }
 
-    // Use a fallback secret if JWT_SECRET not set
-    const jwtSecret = env.JWT_SECRET || 'demo-secret-not-for-production';
+    // Require JWT_SECRET to be set
+    if (!env.JWT_SECRET) {
+      console.error('JWT_SECRET environment variable is not set');
+      return new Response(JSON.stringify({ error: 'Server configuration error' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    const jwtSecret = env.JWT_SECRET;
 
     // Create JWT
     const token = await createJWT(

@@ -80,12 +80,16 @@ export const onRequestPatch: PagesFunction<Env, string, ContextData> = async (co
       'SELECT * FROM visits WHERE id = ?'
     ).bind(visitId).first<Visit>();
 
+    if (!updated) {
+      return error('Visit not found after update', 500);
+    }
+
     return json({
-      id: updated!.id,
-      zooId: updated!.zoo_id,
-      startedAt: updated!.started_at,
-      endedAt: updated!.ended_at,
-      notes: updated!.notes,
+      id: updated.id,
+      zooId: updated.zoo_id,
+      startedAt: updated.started_at,
+      endedAt: updated.ended_at,
+      notes: updated.notes,
     });
   } catch (err) {
     console.error('Update visit error:', err);

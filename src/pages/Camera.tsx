@@ -65,9 +65,9 @@ export default function Camera() {
   const [zoom, setZoom] = useState(1);
   const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
   const [showFocusRing, setShowFocusRing] = useState(false);
+  const [spottedCount, setSpottedCount] = useState(0);
 
   const currentTestImage = TEST_IMAGES[testImageIndex];
-  const spottedCount = animals.length > 0 ? Math.floor(animals.length * 0.3) : 0; // Placeholder until we load real data
 
   const nextTestImage = () => {
     setTestImageIndex((prev) => (prev + 1) % TEST_IMAGES.length);
@@ -77,20 +77,7 @@ export default function Camera() {
     setTestImageIndex((prev) => (prev - 1 + TEST_IMAGES.length) % TEST_IMAGES.length);
   };
 
-  useEffect(() => {
-    if (!testCameraEnabled) {
-      startCamera();
-    }
-    loadAnimals();
-    return () => stopCamera();
-  }, [testCameraEnabled]);
-
-  async function loadAnimals() {
-    if (!activeZoo) return;
-    const zooAnimals = await getAnimalsByZoo(activeZoo.id);
-    setAnimals(zooAnimals);
-  }
-
+  // Camera control functions - defined before useEffect to avoid hoisting issues
   async function startCamera() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -101,7 +88,7 @@ export default function Camera() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
-    } catch (err) {
+    } catch {
       setErrorMessage('Camera access denied');
       setCameraState('error');
     }
@@ -112,6 +99,37 @@ export default function Camera() {
       streamRef.current.getTracks().forEach(track => track.stop());
     }
   }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!testCameraEnabled) {
+      startCamera();
+    }
+
+    async function loadData() {
+      if (!activeZoo) return;
+
+      const zooAnimals = await getAnimalsByZoo(activeZoo.id);
+      if (cancelled) return;
+      setAnimals(zooAnimals);
+
+      // Load actual sightings count
+      if (activeVisit) {
+        const sightings = await getSightingsByVisit(activeVisit.id);
+        if (cancelled) return;
+        setSpottedCount(sightings.length);
+      }
+    }
+
+    loadData();
+
+    return () => {
+      cancelled = true;
+      stopCamera();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [testCameraEnabled, activeZoo, activeVisit]);
 
   async function handleTapToFocus(e: React.MouseEvent | React.TouchEvent) {
     const element = e.currentTarget as HTMLElement;

@@ -25,23 +25,11 @@ export async function toggleSighting(
   visitId: string,
   animalId: string
 ): Promise<{ added: boolean; sighting?: Sighting }> {
-  // Check existing sightings
-  const sightings = await getSightingsByVisit(visitId);
-  const existing = sightings.find((s) => s.animalId === animalId);
-
-  if (existing) {
-    await deleteSighting(existing.id);
-    return { added: false };
-  }
-
-  const sighting = await createSighting({
+  // Use atomic backend endpoint to prevent race conditions
+  return api.post<{ added: boolean; sighting?: Sighting }>('/api/sightings/toggle', {
     visitId,
     animalId,
-    seenAt: new Date().toISOString(),
-    aiIdentified: false,
   });
-
-  return { added: true, sighting };
 }
 
 // Add sighting from AI identification

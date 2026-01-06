@@ -25,11 +25,20 @@ interface GoogleUserInfo {
   picture: string;
 }
 
+// Helper to get cookie value
+function getCookie(request: Request, name: string): string | null {
+  const cookie = request.headers.get('Cookie');
+  if (!cookie) return null;
+  const match = cookie.match(new RegExp(`${name}=([^;]+)`));
+  return match ? match[1] : null;
+}
+
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
   const error = url.searchParams.get('error');
+  const state = url.searchParams.get('state');
 
   if (error) {
     return Response.redirect('/?error=auth_denied', 302);
@@ -37,6 +46,12 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
   if (!code) {
     return Response.redirect('/?error=no_code', 302);
+  }
+
+  // CSRF validation: verify state parameter matches cookie
+  const storedState = getCookie(request, 'oauth_state');
+  if (!state || !storedState || state !== storedState) {
+    return Response.redirect('/?error=csrf_validation_failed', 302);
   }
 
   try {
@@ -109,14 +124,13 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       env.JWT_SECRET
     );
 
-    // Redirect to home with auth cookie
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: '/',
-        'Set-Cookie': setAuthCookie(token),
-      },
-    });
+    // Redirect to home with auth cookie, clear oauth_state cookie
+    const headers = new Headers();
+    headers.set('Location', '/');
+    headers.append('Set-Cookie', setAuthCookie(token));
+    headers.append('Set-Cookie', 'oauth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+
+    return new Response(null, { status: 302, headers });
   } catch (err) {
     console.error('Auth callback error:', err);
     return Response.redirect('/?error=server_error', 302);

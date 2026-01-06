@@ -130,10 +130,3 @@ export interface User {
   createdAt: string;
   isAdmin?: boolean;
 }
-
-// Legacy type - now aliases to User
-export interface UserProfile {
-  id: string;
-  displayName: string;
-  createdAt: string;
-}
