@@ -44,13 +44,32 @@ export async function toggleSighting(
   return { added: true, sighting };
 }
 
+// Upload photo to R2 and return the URL
+async function uploadPhoto(base64Image: string): Promise<string> {
+  const response = await api.post<{ photoUrl: string }>('/api/upload', {
+    image: base64Image,
+  });
+  return response.photoUrl;
+}
+
 // Add sighting from AI identification
 export async function addAISighting(
   visitId: string,
   animalId: string,
   confidence: number,
-  photoUrl?: string
+  base64Image?: string
 ): Promise<Sighting> {
+  // Upload photo to R2 first if provided
+  let photoUrl: string | undefined;
+  if (base64Image) {
+    try {
+      photoUrl = await uploadPhoto(base64Image);
+    } catch (err) {
+      console.error('Failed to upload photo:', err);
+      // Continue without photo if upload fails
+    }
+  }
+
   // API handles upsert - will update existing or create new
   return api.post<Sighting>('/api/sightings', {
     visitId,

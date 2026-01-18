@@ -18,8 +18,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   const { request, next, env } = context;
   const url = new URL(request.url);
 
-  // Skip auth for auth endpoints
-  if (url.pathname.startsWith('/api/auth/')) {
+  // Skip auth for auth endpoints and photo serving
+  if (url.pathname.startsWith('/api/auth/') || url.pathname.startsWith('/api/photos/')) {
     return next();
   }
 
