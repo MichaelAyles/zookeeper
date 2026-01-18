@@ -65,6 +65,13 @@ export default function Camera() {
   const [zoom, setZoom] = useState(1);
   const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
   const [showFocusRing, setShowFocusRing] = useState(false);
+  const [zoomCapabilities, setZoomCapabilities] = useState<{
+    min: number;
+    max: number;
+    step: number;
+    supported: boolean;
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentTestImage = TEST_IMAGES[testImageIndex];
   const spottedCount = animals.length > 0 ? Math.floor(animals.length * 0.3) : 0; // Placeholder until we load real data
@@ -101,10 +108,43 @@ export default function Camera() {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
+
+      // Detect optical zoom capabilities
+      const track = stream.getVideoTracks()[0];
+      const capabilities = track.getCapabilities?.() as MediaTrackCapabilities & {
+        zoom?: { min: number; max: number; step: number };
+      };
+      if (capabilities?.zoom) {
+        setZoomCapabilities({
+          min: capabilities.zoom.min,
+          max: capabilities.zoom.max,
+          step: capabilities.zoom.step,
+          supported: true,
+        });
+      }
     } catch (err) {
       setErrorMessage('Camera access denied');
       setCameraState('error');
     }
+  }
+
+  async function handleZoomChange(newZoom: number) {
+    setZoom(newZoom);
+
+    // Apply optical zoom if supported
+    if (zoomCapabilities?.supported && streamRef.current) {
+      const track = streamRef.current.getVideoTracks()[0];
+      const opticalZoom = Math.min(newZoom, zoomCapabilities.max);
+      try {
+        await track.applyConstraints({
+          advanced: [{ zoom: opticalZoom } as MediaTrackConstraintSet],
+        });
+      } catch (err) {
+        // Optical zoom failed, fall back to digital zoom (CSS transform)
+        console.log('Optical zoom not applied, using digital zoom');
+      }
+    }
+    // Digital zoom is always applied via CSS transform on the video element
   }
 
   function stopCamera() {
@@ -200,14 +240,29 @@ export default function Camera() {
       ctx.drawImage(img, 0, 0);
       imageData = canvas.toDataURL('image/jpeg', 0.8);
     } else if (videoRef.current && canvasRef.current) {
-      // Use live camera
+      // Use live camera - crop based on zoom level
       const canvas = canvasRef.current;
       const video = videoRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
-      ctx.drawImage(video, 0, 0);
+
+      // Calculate crop dimensions based on zoom
+      const scale = zoom;
+      const cropWidth = video.videoWidth / scale;
+      const cropHeight = video.videoHeight / scale;
+      const cropX = (video.videoWidth - cropWidth) / 2;
+      const cropY = (video.videoHeight - cropHeight) / 2;
+
+      // Output size - cap at reasonable resolution for AI processing
+      canvas.width = Math.min(cropWidth, 1280);
+      canvas.height = Math.min(cropHeight, 960);
+
+      // Draw the cropped region to the canvas
+      ctx.drawImage(
+        video,
+        cropX, cropY, cropWidth, cropHeight,  // Source crop
+        0, 0, canvas.width, canvas.height      // Destination
+      );
       imageData = canvas.toDataURL('image/jpeg', 0.8);
     } else {
       return;
@@ -277,6 +332,74 @@ export default function Camera() {
     setErrorMessage('');
     setCapturedImage(null);
     setCameraState('scanning');
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!activeVisit || !activeZoo) {
+      setErrorMessage('Please start a zoo visit first');
+      setCameraState('error');
+      return;
+    }
+
+    if (animals.length === 0) {
+      setErrorMessage('No animals loaded for this zoo');
+      setCameraState('error');
+      return;
+    }
+
+    setCameraState('identifying');
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const imageData = event.target?.result as string;
+      setCapturedImage(imageData);
+
+      try {
+        const identification = await identifyAnimal(imageData, animals);
+
+        if (!identification.animal) {
+          if (identification.failMessage) {
+            setFunFail({
+              emoji: identification.failEmoji || '🤔',
+              message: identification.failMessage,
+            });
+            setCameraState('funFail');
+          } else {
+            setErrorMessage('Could not identify any animal in the image. Please try again.');
+            setCameraState('error');
+          }
+          return;
+        }
+
+        const matchedAnimal = findAnimalByName(identification.animal, animals);
+        if (!matchedAnimal) {
+          setErrorMessage('Animal not found in zoo database. Please try again.');
+          setCameraState('error');
+          return;
+        }
+
+        const existingSightings = await getSightingsByVisit(activeVisit.id);
+        const alreadySpotted = existingSightings.some(s => s.animalId === matchedAnimal.id);
+
+        setResult({
+          animal: matchedAnimal,
+          confidence: Math.round(identification.confidence * 100),
+          funFact: identification.funFact ?? matchedAnimal.funFact ?? undefined,
+          isFirstSighting: !alreadySpotted,
+        });
+        setCameraState('result');
+      } catch (err) {
+        setErrorMessage('Could not identify animal. Please try again.');
+        setCameraState('error');
+      }
+    };
+    reader.readAsDataURL(file);
+
+    // Reset file input so same file can be selected again
+    e.target.value = '';
   }
 
   // Scanning / Camera view
@@ -519,7 +642,7 @@ export default function Camera() {
           )}
         </div>
 
-        {/* Center focus ring */}
+        {/* Center focus ring - only orange corner accents */}
         <div style={{
           position: 'absolute',
           top: '50%',
@@ -532,19 +655,7 @@ export default function Camera() {
             height: '220px',
             position: 'relative',
           }}>
-            {/* Animated ring */}
-            <div style={{
-              position: 'absolute',
-              inset: 0,
-              borderRadius: '24px',
-              border: `2px solid ${cameraState === 'identifying' ? colors.gold : 'rgba(255,255,255,0.4)'}`,
-              boxShadow: cameraState === 'identifying'
-                ? `0 0 30px ${colors.gold}50, inset 0 0 30px ${colors.gold}20`
-                : '0 0 20px rgba(0,0,0,0.3)',
-              transition: 'all 0.3s ease',
-            }} />
-
-            {/* Corner accents */}
+            {/* Corner accents with shadow for visibility */}
             {[
               { top: -2, left: -2, borderTop: true, borderLeft: true },
               { top: -2, right: -2, borderTop: true, borderRight: true },
@@ -563,99 +674,96 @@ export default function Camera() {
                   borderLeft: corner.borderLeft ? `4px solid ${colors.gold}` : 'none',
                   borderRight: corner.borderRight ? `4px solid ${colors.gold}` : 'none',
                   borderRadius: '8px',
+                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
                 }}
               />
             ))}
 
-            {/* Status pill */}
-            <div style={{
-              position: 'absolute',
-              bottom: '-50px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-            }}>
+            {/* Identifying indicator - only shows during identification */}
+            {cameraState === 'identifying' && (
               <div style={{
-                padding: '10px 20px',
-                background: cameraState === 'identifying'
-                  ? colors.gold
-                  : 'rgba(0,0,0,0.6)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                borderRadius: '20px',
-                color: '#fff',
-                fontSize: '14px',
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-                transition: 'all 0.3s ease',
+                position: 'absolute',
+                bottom: '-50px',
+                left: '50%',
+                transform: 'translateX(-50%)',
               }}>
-                {cameraState === 'identifying' ? (
-                  <>
-                    <span style={{
-                      display: 'inline-block',
-                      animation: 'spin 1s linear infinite',
-                    }}>⏳</span>
-                    Identifying...
-                  </>
-                ) : (
-                  <>
-                    <span>🔍</span>
-                    Point at animal
-                  </>
-                )}
+                <div style={{
+                  padding: '10px 20px',
+                  background: colors.gold,
+                  borderRadius: '20px',
+                  color: '#fff',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+                }}>
+                  <span style={{
+                    display: 'inline-block',
+                    animation: 'spin 1s linear infinite',
+                  }}>⏳</span>
+                  Identifying...
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Right side zoom slider */}
+        {/* Minimal zoom slider - positioned to not overlap reticle */}
         <div style={{
           position: 'absolute',
-          right: '16px',
+          right: '12px',
           top: '50%',
           transform: 'translateY(-50%)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '8px',
-          padding: '12px 8px',
-          background: 'rgba(0,0,0,0.4)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          borderRadius: '24px',
+          gap: '4px',
         }}>
-          <span style={{ color: '#fff', fontSize: '12px', fontWeight: '600' }}>+</span>
+          <span style={{
+            color: '#fff',
+            fontSize: '10px',
+            fontWeight: '600',
+            textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+          }}>+</span>
           <input
             type="range"
             min="1"
             max="3"
             step="0.1"
             value={zoom}
-            onChange={(e) => setZoom(parseFloat(e.target.value))}
+            onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
             style={{
-              width: '100px',
-              height: '4px',
+              width: '80px',
+              height: '3px',
               appearance: 'none',
-              background: 'rgba(255,255,255,0.3)',
+              background: 'rgba(255,255,255,0.4)',
               borderRadius: '2px',
               transform: 'rotate(-90deg)',
               cursor: 'pointer',
             }}
           />
-          <span style={{ color: '#fff', fontSize: '12px', fontWeight: '600' }}>−</span>
-          <div style={{
-            marginTop: '4px',
-            padding: '4px 8px',
-            background: 'rgba(255,255,255,0.2)',
-            borderRadius: '8px',
+          <span style={{
             color: '#fff',
-            fontSize: '11px',
+            fontSize: '10px',
             fontWeight: '600',
-          }}>
-            {zoom.toFixed(1)}x
-          </div>
+            textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+          }}>−</span>
+        </div>
+        {/* Zoom value indicator - positioned below slider area */}
+        <div style={{
+          position: 'absolute',
+          right: '8px',
+          top: 'calc(50% + 60px)',
+          padding: '4px 8px',
+          background: 'rgba(0,0,0,0.5)',
+          borderRadius: '10px',
+          color: '#fff',
+          fontSize: '11px',
+          fontWeight: '600',
+        }}>
+          {zoom.toFixed(1)}x
         </div>
 
         {/* Bottom controls */}
@@ -737,9 +845,9 @@ export default function Camera() {
               </div>
             </button>
 
-            {/* Flip camera button */}
+            {/* Photo upload button */}
             <button
-              onClick={() => setZoom(1)}
+              onClick={() => fileInputRef.current?.click()}
               style={{
                 width: '52px',
                 height: '52px',
@@ -755,8 +863,16 @@ export default function Camera() {
                 justifyContent: 'center',
               }}
             >
-              🔄
+              🖼️
             </button>
+            {/* Hidden file input for photo upload */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={handleFileUpload}
+            />
           </div>
 
           {/* Help text */}
@@ -792,12 +908,21 @@ export default function Camera() {
           }
           input[type="range"]::-webkit-slider-thumb {
             appearance: none;
-            width: 16px;
-            height: 16px;
+            width: 12px;
+            height: 12px;
             background: ${colors.gold};
             border-radius: 50%;
             cursor: pointer;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+          }
+          input[type="range"]::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            background: ${colors.gold};
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.4);
           }
         `}</style>
       </div>
