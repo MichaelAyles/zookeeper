@@ -72,6 +72,7 @@ export default function Camera() {
     supported: boolean;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pinchRef = useRef<{ initialDistance: number; initialZoom: number } | null>(null);
 
   const currentTestImage = TEST_IMAGES[testImageIndex];
   const spottedCount = animals.length > 0 ? Math.floor(animals.length * 0.3) : 0; // Placeholder until we load real data
@@ -154,6 +155,11 @@ export default function Camera() {
   }
 
   async function handleTapToFocus(e: React.MouseEvent | React.TouchEvent) {
+    // Don't trigger focus on pinch (2+ touches)
+    if ('touches' in e && e.touches.length > 1) {
+      return;
+    }
+
     const element = e.currentTarget as HTMLElement;
     const rect = element.getBoundingClientRect();
 
@@ -204,6 +210,35 @@ export default function Camera() {
 
     // Hide focus ring after animation
     setTimeout(() => setShowFocusRing(false), 800);
+  }
+
+  // Helper to calculate distance between two touch points
+  function getTouchDistance(touches: React.TouchList): number {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function handlePinchStart(e: React.TouchEvent) {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const distance = getTouchDistance(e.touches);
+      pinchRef.current = { initialDistance: distance, initialZoom: zoom };
+    }
+  }
+
+  function handlePinchMove(e: React.TouchEvent) {
+    if (e.touches.length === 2 && pinchRef.current) {
+      e.preventDefault();
+      const currentDistance = getTouchDistance(e.touches);
+      const scale = currentDistance / pinchRef.current.initialDistance;
+      const newZoom = Math.min(3, Math.max(1, pinchRef.current.initialZoom * scale));
+      handleZoomChange(newZoom);
+    }
+  }
+
+  function handlePinchEnd() {
+    pinchRef.current = null;
   }
 
   async function captureAndIdentify() {
@@ -411,10 +446,15 @@ export default function Camera() {
         background: colors.forest,
         overflow: 'hidden',
       }}>
-        {/* Camera viewport with zoom - tap to focus */}
+        {/* Camera viewport with zoom - tap to focus, pinch to zoom */}
         <div
           onClick={handleTapToFocus}
-          onTouchStart={handleTapToFocus}
+          onTouchStart={(e) => {
+            handleTapToFocus(e);
+            handlePinchStart(e);
+          }}
+          onTouchMove={handlePinchMove}
+          onTouchEnd={handlePinchEnd}
           style={{
             position: 'absolute',
             inset: 0,
@@ -423,6 +463,7 @@ export default function Camera() {
             justifyContent: 'center',
             overflow: 'hidden',
             cursor: 'crosshair',
+            touchAction: 'none', // Prevent browser's default pinch-to-zoom
           }}
         >
           {testCameraEnabled ? (
